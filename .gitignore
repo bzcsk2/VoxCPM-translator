@@ -1,0 +1,57 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+auth.json
+credentials.json
+
+# Local configs
+configs/local.yaml
+configs/*.local.yaml
+
+# Outputs and temporary files
+outputs/
+test_output/
+temp/
+tmp/
+dub_chunks/
+lipsync_temp/
+*.log
+
+# Media files
+*.wav
+*.mp3
+*.m4a
+*.flac
+*.aac
+*.mp4
+*.mov
+*.mkv
+*.avi
+*.ass
+*.srt
+
+# Model weights / checkpoints
+models/
+checkpoints/
+local_models/
+*.onnx
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+*.bin
+*.gguf
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
