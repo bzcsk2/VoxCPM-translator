@@ -100,6 +100,8 @@ Then edit `configs/local.yaml` and set your local model paths and input files.
 
 See [docs/INSTALL.md](docs/INSTALL.md) and [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md) for details.
 
+Project maturity and planned improvements are tracked in [ROADMAP.md](ROADMAP.md).
+
 ## Configuration
 
 All local paths should live in `configs/local.yaml`. The default template intentionally uses placeholder paths:
@@ -156,7 +158,9 @@ outputs/final_dubbing_subtitled.mp4
 
 ## License
 
-A repository license should be added before treating this as a fully open-source release. MIT is the intended default for this codebase.
+This project is licensed under the MIT License. See [LICENSE](LICENSE).
+
+Contributions and security reporting are documented in [CONTRIBUTING.md](CONTRIBUTING.md) and [SECURITY.md](SECURITY.md).
 
 ## Disclaimer
 

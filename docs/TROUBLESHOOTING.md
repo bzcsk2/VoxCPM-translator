@@ -18,9 +18,9 @@ Check `configs/local.yaml`. The scripts do not assume your local machine paths. 
 
 `scripts/02_transcribe_vibe.py` appends `models.vibevoice_repo` to `sys.path`. Make sure it points to the local VibeVoice source directory that contains the `vibevoice` Python package.
 
-## VoxCPM import fails
+## Audio generation backend import fails
 
-Install VoxCPM according to its upstream instructions, or run from an environment where `from voxcpm import VoxCPM` works.
+Install your selected local audio generation backend according to its upstream instructions. The repository expects the backend stage to produce one WAV file per segment in `paths.dub_chunk_dir`, named `raw_<id>.wav`.
 
 ## GPU out of memory during LatentSync
 

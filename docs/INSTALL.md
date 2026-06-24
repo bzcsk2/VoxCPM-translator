@@ -65,7 +65,7 @@ bash scripts/01_process_vocals.sh configs/local.yaml
 python scripts/02_transcribe_vibe.py --config configs/local.yaml
 python scripts/03_refine_and_translate.py --config configs/local.yaml
 python scripts/04_verify_translation.py --config configs/local.yaml
-python scripts/05_voxcpm_tts.py --config configs/local.yaml
+python scripts/05_generate_audio_chunks.py --config configs/local.yaml
 python scripts/06_assemble_final.py --config configs/local.yaml
 ```
 

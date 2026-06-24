@@ -31,9 +31,9 @@ models:
 
 `vibevoice_repo` should be the local source repository path that exposes the `vibevoice` Python package imports used by the script.
 
-### 3. VoxCPM2
+### 3. Local audio generation backend
 
-Used by `scripts/05_voxcpm_tts.py` for zero-shot voice cloning.
+Used by `scripts/05_generate_audio_chunks.py` as the integration point for per-segment dubbed audio generation.
 
 Config key:
 
@@ -41,6 +41,8 @@ Config key:
 models:
   voxcpm_model_path: "/path/to/VoxCPM2"
 ```
+
+The repository does not currently ship a full TTS implementation. Generate one WAV file per segment as `raw_<id>.wav` in `paths.dub_chunk_dir`, or add a backend adapter that produces that format.
 
 ### 4. LatentSync, optional
 
