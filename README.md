@@ -168,6 +168,14 @@ python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-s
 
 `--resume` skips stages whose durable outputs are complete. Validation-only stages such as `verify` are not auto-skipped because they do not create durable output files.
 
+Real stage runs write local manifest files under:
+
+```text
+outputs/.pipeline_state/
+```
+
+Each manifest records only stage metadata such as stage id, stage name, success/failure status, timestamps, duration, return code, and config file name. It intentionally does not record API keys, prompts, translated text, source text, command lines, model outputs, or media metadata.
+
 Optional:
 
 ```bash
