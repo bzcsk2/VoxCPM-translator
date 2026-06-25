@@ -28,6 +28,7 @@ The core design choice is **per-segment audio generation**: each dialogue segmen
 - Designed for Chinese drama / short-video dialogue.
 - Context-aware ASR correction and dubbing translation.
 - Per-segment audio chunk interface for local generation backends.
+- Built-in backend modes: `manual`, `custom_command`, and `voxcpm` adapter.
 - Smart speed adjustment for generated clips before audio assembly.
 - Config and environment preflight checks.
 - Optional ASS subtitle generation.
@@ -41,6 +42,7 @@ The core design choice is **per-segment audio generation**: each dialogue segmen
 │   └── default.yaml
 ├── docs/
 │   ├── INSTALL.md
+│   ├── KNOWN_GOOD_ENV.md
 │   ├── MODEL_SETUP.md
 │   ├── TROUBLESHOOTING.md
 │   └── LIPSYNC_DESIGN.md
@@ -83,7 +85,7 @@ The pipeline expects you to prepare models yourself. Common local components inc
 - `Kim_Vocal_2.onnx` or another audio-separator-compatible vocal model
 - `VibeVoice-ASR`
 - `Qwen3-ASR-1.7B` or compatible tokenizer/model path required by your VibeVoice setup
-- Your preferred local audio-generation backend
+- Your preferred local audio-generation backend or VoxCPM adapter
 - Optional: `LatentSync`
 
 This repository does **not** redistribute any model weights.
@@ -106,7 +108,7 @@ Then edit `configs/local.yaml` and set your local model paths and input files.
 
 The scripts automatically load simple `KEY=VALUE` pairs from `.env` without overriding already exported environment variables.
 
-See [docs/INSTALL.md](docs/INSTALL.md) and [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md) for details.
+See [docs/INSTALL.md](docs/INSTALL.md), [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md), and [docs/KNOWN_GOOD_ENV.md](docs/KNOWN_GOOD_ENV.md) for details.
 
 Project maturity and planned improvements are tracked in [ROADMAP.md](ROADMAP.md).
 
@@ -167,7 +169,12 @@ raw_1.wav
 raw_2.wav
 ```
 
-The default `tts.backend: manual` validates that those files already exist. To connect your own local TTS backend, set:
+Backend options:
+
+```yaml
+tts:
+  backend: "manual"
+```
 
 ```yaml
 tts:
@@ -175,7 +182,14 @@ tts:
   custom_command: "python my_tts.py --text '$text' --speaker '$speaker' --output '$output'"
 ```
 
-Available template variables are `$id`, `$speaker`, `$text`, `$output`, `$start`, and `$end`.
+```yaml
+tts:
+  backend: "voxcpm"
+  voxcpm_adapter: "my_voxcpm_adapter"
+  voxcpm_adapter_function: "generate_audio"
+```
+
+The `custom_command` backend supports `$id`, `$speaker`, `$text`, `$output`, `$start`, and `$end`. The `voxcpm` backend imports the configured adapter module and calls `generate_audio(segment, output_path, config)`.
 
 ## Main outputs
 
