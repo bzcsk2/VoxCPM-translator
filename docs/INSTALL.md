@@ -52,21 +52,40 @@ models:
   voxcpm_model_path: "/path/to/VoxCPM2"
 ```
 
-Set your API key:
+Set your API key in `.env` or export it in your shell:
 
 ```bash
-export NVIDIA_API_KEY="your_key_here"
+NVIDIA_API_KEY="your_key_here"
 ```
 
-## 5. Run pipeline
+Simple `KEY=VALUE` pairs in `.env` are loaded automatically by the Python scripts. Already-exported environment variables take precedence over `.env` values.
+
+## 5. Check environment
+
+Run the preflight check before the full pipeline:
 
 ```bash
+python scripts/check_env.py --config configs/local.yaml
+```
+
+This checks FFmpeg, FFprobe, optional `audio-separator`, API-key presence, input paths, model directories, output directory creation, and TTS backend configuration.
+
+## 6. Run pipeline
+
+```bash
+python scripts/00_extract_audio.py --config configs/local.yaml
 bash scripts/01_process_vocals.sh configs/local.yaml
 python scripts/02_transcribe_vibe.py --config configs/local.yaml
 python scripts/03_refine_and_translate.py --config configs/local.yaml
 python scripts/04_verify_translation.py --config configs/local.yaml
 python scripts/05_generate_audio_chunks.py --config configs/local.yaml
 python scripts/06_assemble_final.py --config configs/local.yaml
+```
+
+Or use the lightweight orchestrator:
+
+```bash
+python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6
 ```
 
 Optional:

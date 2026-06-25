@@ -2,7 +2,7 @@
 
 Local-first AI dubbing pipeline for translating Chinese drama / video content into English dubbed video.
 
-This project combines vocal extraction, ASR, LLM-based script correction, dubbing-oriented translation, FFmpeg audio assembly, and optional LatentSync lip-sync. The per-segment audio generation stage is kept as a local-backend integration point so users can connect their own local model setup and comply with the licenses and permissions of their source material.
+This project combines audio extraction, vocal extraction, ASR, LLM-based script correction, dubbing-oriented translation, per-segment TTS adapter integration, FFmpeg audio assembly, and optional LatentSync lip-sync. The audio generation stage is implemented as a strict adapter boundary so users can connect their own local backend and comply with the licenses and permissions of their source material.
 
 > Status: research release. The pipeline has been run locally, but users must prepare model weights and local paths themselves.
 
@@ -10,14 +10,15 @@ This project combines vocal extraction, ASR, LLM-based script correction, dubbin
 
 VoxCPM Translator turns a source video into an English dubbed video through a staged workflow:
 
-1. Extract clean vocals and instrumental audio.
-2. Transcribe Chinese speech with speaker IDs and timestamps.
-3. Refine ASR text and translate it into dubbing-friendly English.
-4. Verify that translated JSON still matches the ASR segment list.
-5. Generate per-segment audio chunks with your local backend.
-6. Assemble the final dubbed audio track and mux it with video.
-7. Optionally run LatentSync for mouth-shape synchronization.
-8. Optionally burn English subtitles.
+1. Extract WAV audio from the input video.
+2. Extract clean vocals and instrumental audio.
+3. Transcribe Chinese speech with speaker IDs and timestamps.
+4. Refine ASR text and translate it into dubbing-friendly English.
+5. Verify that translated JSON still matches the ASR segment list.
+6. Generate or validate per-segment audio chunks through a local backend adapter.
+7. Assemble the final dubbed audio track and mux it with video.
+8. Optionally run LatentSync for mouth-shape synchronization.
+9. Optionally burn English subtitles.
 
 The core design choice is **per-segment audio generation**: each dialogue segment maps to one output clip named `raw_<id>.wav`, so the assembly stage can align the generated audio to the original timestamps.
 
@@ -28,6 +29,7 @@ The core design choice is **per-segment audio generation**: each dialogue segmen
 - Context-aware ASR correction and dubbing translation.
 - Per-segment audio chunk interface for local generation backends.
 - Smart speed adjustment for generated clips before audio assembly.
+- Config and environment preflight checks.
 - Optional ASS subtitle generation.
 - Optional experimental LatentSync integration.
 
@@ -45,6 +47,7 @@ The core design choice is **per-segment audio generation**: each dialogue segmen
 ├── examples/
 │   └── sample_workflow_data.json
 ├── scripts/
+│   ├── 00_extract_audio.py
 │   ├── 01_process_vocals.sh
 │   ├── 02_transcribe_vibe.py
 │   ├── 03_refine_and_translate.py
@@ -54,7 +57,10 @@ The core design choice is **per-segment audio generation**: each dialogue segmen
 │   ├── 06_assemble_final.py
 │   ├── 07_latentsync_lipsync.py
 │   ├── burn_subtitles.py
-│   └── common.py
+│   ├── check_env.py
+│   ├── common.py
+│   └── run_pipeline.py
+├── tests/
 ├── .env.example
 ├── .gitignore
 └── requirements.txt
@@ -98,6 +104,8 @@ cp configs/default.yaml configs/local.yaml
 
 Then edit `configs/local.yaml` and set your local model paths and input files.
 
+The scripts automatically load simple `KEY=VALUE` pairs from `.env` without overriding already exported environment variables.
+
 See [docs/INSTALL.md](docs/INSTALL.md) and [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md) for details.
 
 Project maturity and planned improvements are tracked in [ROADMAP.md](ROADMAP.md).
@@ -118,9 +126,16 @@ Do not commit `configs/local.yaml` if it contains private machine paths.
 
 ## Usage
 
-Run the stages in order:
+Run a preflight check first:
 
 ```bash
+python scripts/check_env.py --config configs/local.yaml
+```
+
+Run stages in order:
+
+```bash
+python scripts/00_extract_audio.py --config configs/local.yaml
 bash scripts/01_process_vocals.sh configs/local.yaml
 python scripts/02_transcribe_vibe.py --config configs/local.yaml
 python scripts/03_refine_and_translate.py --config configs/local.yaml
@@ -129,12 +144,38 @@ python scripts/05_generate_audio_chunks.py --config configs/local.yaml
 python scripts/06_assemble_final.py --config configs/local.yaml
 ```
 
+Or run selected stages through the lightweight orchestrator:
+
+```bash
+python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6
+```
+
 Optional:
 
 ```bash
 python scripts/07_latentsync_lipsync.py --config configs/local.yaml
 python scripts/burn_subtitles.py --config configs/local.yaml
 ```
+
+## TTS backend contract
+
+`paths.refined_json` contains one row per segment. The audio generation stage expects one WAV file per spoken segment in `paths.dub_chunk_dir`:
+
+```text
+raw_0.wav
+raw_1.wav
+raw_2.wav
+```
+
+The default `tts.backend: manual` validates that those files already exist. To connect your own local TTS backend, set:
+
+```yaml
+tts:
+  backend: "custom_command"
+  custom_command: "python my_tts.py --text '$text' --speaker '$speaker' --output '$output'"
+```
+
+Available template variables are `$id`, `$speaker`, `$text`, `$output`, `$start`, and `$end`.
 
 ## Main outputs
 
