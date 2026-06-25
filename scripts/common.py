@@ -87,11 +87,8 @@ def timestamp_to_ms(ts: str) -> int:
 
 
 def seconds_to_timestamp(seconds: float) -> str:
-    hours = int(seconds // 3600)
-    minutes = int((seconds % 3600) // 60)
-    secs = int(seconds % 60)
-    millis = int(round((seconds - int(seconds)) * 1000))
-    if millis == 1000:
-        secs += 1
-        millis = 0
+    total_millis = int(round(seconds * 1000))
+    hours, remainder = divmod(total_millis, 3_600_000)
+    minutes, remainder = divmod(remainder, 60_000)
+    secs, millis = divmod(remainder, 1_000)
     return f"{hours:02}:{minutes:02}:{secs:02}.{millis:03}"
