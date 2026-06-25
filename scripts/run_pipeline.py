@@ -130,7 +130,9 @@ def stage_status(stage_id: int, cfg: dict[str, Any]) -> tuple[str, str]:
 def print_status(cfg: dict[str, Any], from_stage: int, to_stage: int) -> None:
     for stage_id, name, _base_cmd in selected_stages(from_stage, to_stage):
         state, detail = stage_status(stage_id, cfg)
-        print(f"[{stage_id}] {name}: {state} - {detail}")
+        manifest = read_stage_manifest(stage_id, name, cfg)
+        manifest_info = f" | {format_manifest_summary(manifest)}" if manifest else ""
+        print(f"[{stage_id}] {name}: {state} - {detail}{manifest_info}")
 
 
 def should_skip_for_resume(stage_id: int, cfg: dict[str, Any]) -> bool:
@@ -146,6 +148,36 @@ def manifest_dir(cfg: dict[str, Any]) -> Path:
 def manifest_path(stage_id: int, name: str, cfg: dict[str, Any]) -> Path:
     safe_name = name.replace("/", "-").replace(" ", "-")
     return manifest_dir(cfg) / f"stage_{stage_id:02d}_{safe_name}.json"
+
+
+def read_stage_manifest(stage_id: int, name: str, cfg: dict[str, Any]) -> dict[str, Any] | None:
+    path = manifest_path(stage_id, name, cfg)
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def format_manifest_summary(manifest: dict[str, Any]) -> str:
+    status = str(manifest.get("status") or "unknown")
+    parts = [f"last_run={status}"]
+
+    finished_at = manifest.get("finished_at")
+    if finished_at:
+        parts.append(f"finished={finished_at}")
+
+    duration = manifest.get("duration_seconds")
+    if isinstance(duration, int | float):
+        parts.append(f"duration={duration}s")
+
+    returncode = manifest.get("returncode")
+    if returncode not in (None, 0):
+        parts.append(f"returncode={returncode}")
+
+    return ", ".join(parts)
 
 
 def utc_now() -> str:
