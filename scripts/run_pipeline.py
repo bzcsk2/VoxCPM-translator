@@ -4,6 +4,8 @@ import argparse
 import json
 import subprocess
 import sys
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -136,9 +138,82 @@ def should_skip_for_resume(stage_id: int, cfg: dict[str, Any]) -> bool:
     return state == "complete"
 
 
+def manifest_dir(cfg: dict[str, Any]) -> Path:
+    output_dir = Path(str(get_nested(cfg, "paths.output_dir", "outputs")))
+    return output_dir / ".pipeline_state"
+
+
+def manifest_path(stage_id: int, name: str, cfg: dict[str, Any]) -> Path:
+    safe_name = name.replace("/", "-").replace(" ", "-")
+    return manifest_dir(cfg) / f"stage_{stage_id:02d}_{safe_name}.json"
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat(timespec="seconds")
+
+
+def write_stage_manifest(
+    stage_id: int,
+    name: str,
+    cfg: dict[str, Any],
+    status: str,
+    started_at: str,
+    finished_at: str,
+    duration_seconds: float,
+    returncode: int | None,
+    config_path: str,
+) -> None:
+    directory = manifest_dir(cfg)
+    directory.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "stage_id": stage_id,
+        "stage_name": name,
+        "status": status,
+        "started_at": started_at,
+        "finished_at": finished_at,
+        "duration_seconds": round(duration_seconds, 3),
+        "returncode": returncode,
+        "config_file": Path(config_path).name,
+    }
+    manifest_path(stage_id, name, cfg).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+
+
+def run_stage(stage_id: int, name: str, cmd: list[str], cfg: dict[str, Any], config_path: str) -> None:
+    started_at = utc_now()
+    started = time.monotonic()
+    try:
+        subprocess.run(cmd, check=True)
+    except subprocess.CalledProcessError as exc:
+        finished_at = utc_now()
+        write_stage_manifest(
+            stage_id,
+            name,
+            cfg,
+            status="failed",
+            started_at=started_at,
+            finished_at=finished_at,
+            duration_seconds=time.monotonic() - started,
+            returncode=exc.returncode,
+            config_path=config_path,
+        )
+        raise
+    finished_at = utc_now()
+    write_stage_manifest(
+        stage_id,
+        name,
+        cfg,
+        status="success",
+        started_at=started_at,
+        finished_at=finished_at,
+        duration_seconds=time.monotonic() - started,
+        returncode=0,
+        config_path=config_path,
+    )
+
+
 def main() -> int:
     args = parse_args()
-    cfg = load_config(args.config) if args.status or args.resume else {}
+    cfg = load_config(args.config) if args.status or args.resume or not args.dry_run else {}
 
     if args.status:
         print_status(cfg, args.from_stage, args.to_stage)
@@ -154,7 +229,7 @@ def main() -> int:
         cmd = stage_command(name, base_cmd, args.config)
         print(f"[{stage_id}] {name}: {' '.join(cmd)}")
         if not args.dry_run:
-            subprocess.run(cmd, check=True)
+            run_stage(stage_id, name, cmd, cfg, args.config)
     return 0
 
 

@@ -1,5 +1,6 @@
 import importlib.util
 import json
+import subprocess
 import sys
 from pathlib import Path
 
@@ -55,8 +56,15 @@ def test_run_pipeline_skip_accepts_id_and_name(monkeypatch, capsys) -> None:
     assert "[2] transcribe: skipped" in output
 
 
-def test_run_pipeline_executes_commands_with_expected_config(monkeypatch) -> None:
+def test_run_pipeline_executes_commands_with_expected_config(monkeypatch, tmp_path: Path) -> None:
     calls = []
+    config_path = write_config(
+        tmp_path / "config.yaml",
+        f"""
+paths:
+  output_dir: "{tmp_path / 'outputs'}"
+""",
+    )
 
     def fake_run(cmd, check):
         calls.append(cmd)
@@ -65,12 +73,12 @@ def test_run_pipeline_executes_commands_with_expected_config(monkeypatch) -> Non
     monkeypatch.setattr(
         sys,
         "argv",
-        ["run_pipeline.py", "--config", "cfg.yaml", "--from-stage", "1", "--to-stage", "2"],
+        ["run_pipeline.py", "--config", str(config_path), "--from-stage", "1", "--to-stage", "2"],
     )
     assert run_pipeline.main() == 0
-    assert calls[0][-1] == "cfg.yaml"
+    assert calls[0][-1] == str(config_path)
     assert calls[0][0] == "bash"
-    assert calls[1][-2:] == ["--config", "cfg.yaml"]
+    assert calls[1][-2:] == ["--config", str(config_path)]
 
 
 def test_status_reports_complete_and_missing_outputs(tmp_path: Path, monkeypatch, capsys) -> None:
@@ -108,6 +116,7 @@ def test_resume_skips_complete_stage_and_runs_missing_stage(tmp_path: Path, monk
 paths:
   input_wav: "{input_wav}"
   asr_json: "{asr_json}"
+  output_dir: "{tmp_path / 'outputs'}"
 """,
     )
 
@@ -154,3 +163,43 @@ def test_tts_stage_status_checks_required_chunks(tmp_path: Path) -> None:
 def test_verify_stage_is_not_auto_resumable() -> None:
     assert run_pipeline.stage_status(4, {})[0] == "check"
     assert run_pipeline.should_skip_for_resume(4, {}) is False
+
+
+def test_run_stage_writes_success_manifest(tmp_path: Path, monkeypatch) -> None:
+    calls = []
+    cfg = {"paths": {"output_dir": str(tmp_path / "outputs")}}
+
+    def fake_run(cmd, check):
+        calls.append(cmd)
+
+    monkeypatch.setattr(run_pipeline.subprocess, "run", fake_run)
+    run_pipeline.run_stage(2, "transcribe", ["python", "script.py"], cfg, "/private/configs/local.yaml")
+
+    manifest = tmp_path / "outputs" / ".pipeline_state" / "stage_02_transcribe.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    assert data["stage_id"] == 2
+    assert data["stage_name"] == "transcribe"
+    assert data["status"] == "success"
+    assert data["returncode"] == 0
+    assert data["config_file"] == "local.yaml"
+    assert "script.py" not in json.dumps(data)
+
+
+def test_run_stage_writes_failed_manifest(tmp_path: Path, monkeypatch) -> None:
+    cfg = {"paths": {"output_dir": str(tmp_path / "outputs")}}
+
+    def fake_run(cmd, check):
+        raise subprocess.CalledProcessError(2, cmd)
+
+    monkeypatch.setattr(run_pipeline.subprocess, "run", fake_run)
+    try:
+        run_pipeline.run_stage(3, "refine-translate", ["python", "script.py"], cfg, "configs/local.yaml")
+    except subprocess.CalledProcessError:
+        pass
+    else:
+        raise AssertionError("expected stage failure")
+
+    manifest = tmp_path / "outputs" / ".pipeline_state" / "stage_03_refine-translate.json"
+    data = json.loads(manifest.read_text(encoding="utf-8"))
+    assert data["status"] == "failed"
+    assert data["returncode"] == 2
