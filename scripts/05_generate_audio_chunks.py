@@ -1,12 +1,13 @@
 from __future__ import annotations
 
+import importlib
 import json
 import shlex
 import subprocess
 import sys
 from pathlib import Path
 from string import Template
-from typing import Any
+from typing import Any, Callable
 
 from common import ensure_dir, get_nested, load_config, parse_args, require_nested
 
@@ -67,6 +68,57 @@ def run_custom_command(segments: list[dict[str, Any]], chunk_dir: Path, command_
             raise FileNotFoundError(f"Custom TTS command completed but did not create: {output_path}")
 
 
+def _load_adapter(module_name: str, function_name: str) -> Callable[[dict[str, Any], Path, dict[str, Any]], None]:
+    try:
+        module = importlib.import_module(module_name)
+    except ModuleNotFoundError as exc:
+        raise RuntimeError(
+            f"Could not import TTS adapter module {module_name!r}. "
+            "Install it, add it to PYTHONPATH, or use tts.backend=custom_command/manual."
+        ) from exc
+
+    function = getattr(module, function_name, None)
+    if function is None or not callable(function):
+        raise RuntimeError(f"Adapter module {module_name!r} does not define callable {function_name!r}.")
+    return function
+
+
+def run_python_adapter(
+    segments: list[dict[str, Any]],
+    chunk_dir: Path,
+    cfg: dict[str, Any],
+    adapter_module: str,
+    function_name: str,
+    overwrite: bool,
+) -> None:
+    generate_audio = _load_adapter(adapter_module, function_name)
+    for segment in segments:
+        text = _segment_text(segment)
+        if not text or text in NOISE_MARKERS:
+            continue
+        seg_id = segment.get("id")
+        output_path = chunk_dir / f"raw_{seg_id}.wav"
+        if output_path.exists() and not overwrite:
+            print(f"Skipping existing chunk: {output_path}")
+            continue
+        print(f"Generating chunk ID {seg_id} with adapter {adapter_module}.{function_name}: {output_path}")
+        generate_audio(segment, output_path, cfg)
+        if not output_path.exists():
+            raise FileNotFoundError(f"Adapter completed but did not create: {output_path}")
+
+
+def run_voxcpm_adapter(segments: list[dict[str, Any]], chunk_dir: Path, cfg: dict[str, Any], overwrite: bool) -> None:
+    adapter_module = get_nested(cfg, "tts.voxcpm_adapter", "")
+    function_name = get_nested(cfg, "tts.voxcpm_adapter_function", "generate_audio")
+    if not adapter_module:
+        raise RuntimeError(
+            "tts.backend is 'voxcpm', but tts.voxcpm_adapter is empty. "
+            "Set it to a Python module that exposes generate_audio(segment, output_path, config), "
+            "or use tts.backend=custom_command for a CLI-based VoxCPM runner."
+        )
+    run_python_adapter(segments, chunk_dir, cfg, adapter_module, function_name, overwrite=overwrite)
+
+
 def main() -> int:
     args = parse_args("Generate or validate per-segment audio chunks")
     cfg = load_config(args.config)
@@ -96,7 +148,11 @@ def main() -> int:
         run_custom_command(segments, Path(chunk_dir), command_template, overwrite=overwrite)
         return 0
 
-    raise RuntimeError(f"Unsupported tts.backend: {backend!r}. Supported: manual, custom_command")
+    if backend == "voxcpm":
+        run_voxcpm_adapter(segments, Path(chunk_dir), cfg, overwrite=overwrite)
+        return 0
+
+    raise RuntimeError(f"Unsupported tts.backend: {backend!r}. Supported: manual, custom_command, voxcpm")
 
 
 if __name__ == "__main__":
