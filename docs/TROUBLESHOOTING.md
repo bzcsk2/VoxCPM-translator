@@ -46,3 +46,26 @@ python scripts/04_verify_translation.py --config configs/local.yaml
 ```
 
 If invalid JSON is returned by the LLM, reduce `llm.batch_size` or increase `llm.max_tokens`.
+
+The translation stage may write local diagnostics under:
+
+```text
+outputs/failed_llm_batches/
+```
+
+These files can contain snippets of model responses, translated text, source text, local paths, or provider error messages. They are debugging artifacts and should not be committed or uploaded publicly without review.
+
+## Generated files appear in `git status`
+
+Generated media, intermediate WAV files, subtitles, final videos, and LLM failure diagnostics should remain local. The repository ignores the common output locations and media extensions, including:
+
+```text
+outputs/
+outputs/failed_llm_batches/
+raw_*.wav
+dub_*.wav
+fixed_*.wav
+final_dubbing*.mp4
+```
+
+If a generated file still appears in `git status`, either move it under `outputs/` or add a targeted ignore rule before committing. Do not commit private source videos, generated voices, subtitle files, failed LLM responses, API error payloads, or local model paths.

@@ -19,12 +19,24 @@ configs/*.local.yaml
 
 # Outputs and temporary files
 outputs/
+outputs/failed_llm_batches/
 test_output/
 temp/
 tmp/
 dub_chunks/
 lipsync_temp/
 *.log
+
+# Generated pipeline artifacts
+*_Vocals_*.wav
+*_Instrumental_*.wav
+raw_*.wav
+dub_*.wav
+fixed_*.wav
+temp_full_audio.wav
+final_dubbing*.mp4
+*_lipsync*.mp4
+*_subtitled*.mp4
 
 # Media files
 *.wav
