@@ -105,6 +105,44 @@ paths:
     assert "[2] transcribe: missing" in output
 
 
+def test_status_reports_last_stage_manifest(tmp_path: Path, monkeypatch, capsys) -> None:
+    asr_json = tmp_path / "asr.json"
+    config_path = write_config(
+        tmp_path / "config.yaml",
+        f"""
+paths:
+  asr_json: "{asr_json}"
+  output_dir: "{tmp_path / 'outputs'}"
+""",
+    )
+    cfg = run_pipeline.load_config(str(config_path))
+    run_pipeline.write_stage_manifest(
+        2,
+        "transcribe",
+        cfg,
+        status="failed",
+        started_at="2026-06-25T07:00:00+00:00",
+        finished_at="2026-06-25T07:00:03+00:00",
+        duration_seconds=3.456,
+        returncode=2,
+        config_path="/private/configs/local.yaml",
+    )
+
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_pipeline.py", "--config", str(config_path), "--from-stage", "2", "--to-stage", "2", "--status"],
+    )
+    assert run_pipeline.main() == 0
+    output = capsys.readouterr().out
+    assert "[2] transcribe: missing" in output
+    assert "last_run=failed" in output
+    assert "finished=2026-06-25T07:00:03+00:00" in output
+    assert "duration=3.456s" in output
+    assert "returncode=2" in output
+    assert "/private" not in output
+
+
 def test_resume_skips_complete_stage_and_runs_missing_stage(tmp_path: Path, monkeypatch, capsys) -> None:
     calls = []
     input_wav = tmp_path / "input.wav"
