@@ -93,6 +93,18 @@ def test_run_checks_custom_command_requires_command(monkeypatch, tmp_path: Path)
     assert levels["tts.custom_command"] == "FAIL"
 
 
+def test_run_checks_voxcpm_accepts_importable_adapter(monkeypatch, tmp_path: Path) -> None:
+    monkeypatch.setattr(check_env.shutil, "which", lambda exe: f"/usr/bin/{exe}")
+    config_path = _write_config(tmp_path, backend="voxcpm", adapter="json")
+
+    results = check_env.run_checks(str(config_path))
+    levels = _levels(results)
+
+    assert levels["tts.backend"] == "OK"
+    assert levels["models.voxcpm_model_path"] == "OK"
+    assert levels["tts.voxcpm_adapter"] == "OK"
+
+
 def test_run_checks_voxcpm_requires_model_path_and_adapter(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(check_env.shutil, "which", lambda exe: f"/usr/bin/{exe}")
     config_path = _write_config(tmp_path, backend="voxcpm", adapter="")
