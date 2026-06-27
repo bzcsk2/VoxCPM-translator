@@ -1,136 +1,69 @@
 # Model setup
 
-This repository does not include model weights. You must download models from their official sources and follow their usage terms.
+This repository does not include model weights. Keep all external models outside this Git repository and point `configs/local.yaml` to local paths.
 
-## Required models
+## Required local downloads
 
-### 1. Vocal separation model
+| Component | Required for | Local path example | Config keys |
+| --- | --- | --- | --- |
+| Vocal separation ONNX model, for example `Kim_Vocal_2.onnx` | Stage 01 | `~/models/audio-separator/Kim_Vocal_2.onnx` | `models.audio_separator_model`, `models.audio_separator_model_dir` |
+| VibeVoice source checkout containing the `vibevoice` Python package | Stage 02 | `~/repos/VibeVoice` | `models.vibevoice_repo` |
+| VibeVoice-ASR model directory | Stage 02 | `~/models/VibeVoice-ASR` | `models.vibevoice_asr_path` |
+| Qwen3-ASR model directory | Stage 02 | `~/models/Qwen3-ASR-1.7B` | `models.qwen_asr_path` |
+| VoxCPM2 model directory | Stage 05 when `tts.backend: voxcpm` | `~/models/VoxCPM2` | `models.voxcpm_model_path` |
+| LatentSync checkout, optional | Stage 07 | `~/repos/LatentSync` | `models.latentsync_dir` |
 
-Used by `audio-separator` in `scripts/01_process_vocals.sh`.
+Recommended layout:
 
-Config keys:
+```text
+~/repos/
+  VibeVoice/
+  LatentSync/
+
+~/models/
+  audio-separator/
+    Kim_Vocal_2.onnx
+  VibeVoice-ASR/
+  Qwen3-ASR-1.7B/
+  VoxCPM2/
+```
+
+## Local config example
 
 ```yaml
 models:
   audio_separator_model: "Kim_Vocal_2.onnx"
-  audio_separator_model_dir: "/path/to/audio-separator-models"
+  audio_separator_model_dir: "/home/you/models/audio-separator"
+  vibevoice_repo: "/home/you/repos/VibeVoice"
+  vibevoice_asr_path: "/home/you/models/VibeVoice-ASR"
+  qwen_asr_path: "/home/you/models/Qwen3-ASR-1.7B"
+  voxcpm_model_path: "/home/you/models/VoxCPM2"
+  latentsync_dir: "/home/you/repos/LatentSync"
 ```
 
-### 2. VibeVoice-ASR
+## VoxCPM backend contract
 
-Used by `scripts/02_transcribe_vibe.py` for timestamped ASR and speaker IDs.
-
-Config keys:
-
-```yaml
-models:
-  vibevoice_repo: "/path/to/VibeVoice"
-  vibevoice_asr_path: "/path/to/VibeVoice-ASR"
-  qwen_asr_path: "/path/to/Qwen3-ASR-1.7B"
-```
-
-`vibevoice_repo` should be the local source repository path that exposes the `vibevoice` Python package imports used by the script.
-
-### 3. Local audio generation backend
-
-Used by `scripts/05_generate_audio_chunks.py` for per-segment dubbed audio generation or validation.
-
-Config key:
-
-```yaml
-models:
-  voxcpm_model_path: "/path/to/VoxCPM2"
-
-tts:
-  backend: "manual"
-```
-
-The repository defines a stable file contract:
-
-```text
-paths.dub_chunk_dir/
-  raw_0.wav
-  raw_1.wav
-  raw_2.wav
-```
-
-Each spoken segment in `paths.refined_json` must produce one WAV file named `raw_<id>.wav`. `dub_<id>.wav` is accepted for compatibility.
-
-Supported backend modes:
-
-#### `manual`
-
-Validates that required chunks already exist.
-
-```yaml
-tts:
-  backend: "manual"
-```
-
-#### `custom_command`
-
-Calls a local CLI command once per segment. Available template variables are `$id`, `$speaker`, `$text`, `$output`, `$start`, and `$end`.
-
-```yaml
-tts:
-  backend: "custom_command"
-  custom_command: "python my_tts.py --text '$text' --speaker '$speaker' --output '$output'"
-  overwrite: false
-```
-
-#### `voxcpm`
-
-Calls a Python adapter module that you provide. This keeps VoxCPM import details outside the repository while giving the project a first-class backend slot.
-
-```yaml
-tts:
-  backend: "voxcpm"
-  voxcpm_adapter: "my_voxcpm_adapter"
-  voxcpm_adapter_function: "generate_audio"
-  overwrite: false
-```
-
-The adapter function must have this signature:
+The repository does not hard-code a concrete VoxCPM runtime. `tts.backend: voxcpm` imports the adapter configured by `tts.voxcpm_adapter` and calls:
 
 ```python
+from pathlib import Path
+
 def generate_audio(segment: dict, output_path: Path, config: dict) -> None:
     ...
 ```
 
-The function should write a WAV file to `output_path`. It can read `models.voxcpm_model_path`, `tts.cfg_value`, `tts.inference_timesteps`, `tts.voice_prompt_prefix`, and any extra keys from `config`.
+The function must write one WAV file to `output_path`. Start from `examples/voxcpm_adapter_template.py`, replace the placeholder loader and inference call, and make the adapter module importable from the environment that runs `scripts/05_generate_audio_chunks.py`.
 
-A starting template is available at:
+## Verify local setup
 
-```text
-examples/voxcpm_adapter_template.py
+Run:
+
+```bash
+python scripts/check_env.py --config configs/local.yaml
 ```
 
-Copy it into your local project path, replace the loader and inference call with the VoxCPM API installed on your machine, then set `tts.voxcpm_adapter` to the importable module path.
+For a full run, fix failures for FFmpeg / FFprobe, input media, the audio-separator model file, VibeVoice source path, VibeVoice-ASR model directory, Qwen3-ASR model directory, and the selected TTS backend.
 
-### 4. LatentSync, optional
+## Git hygiene
 
-Used by `scripts/07_latentsync_lipsync.py`.
-
-Config key:
-
-```yaml
-models:
-  latentsync_dir: "/path/to/LatentSync"
-```
-
-The LatentSync step is experimental. It may require separate dependency isolation because its torch / diffusers / CUDA requirements can conflict with the ASR or TTS environment.
-
-## Recommended model storage
-
-Do not store models inside this Git repository. Use a separate local directory, for example:
-
-```text
-~/models/
-  audio-separator/
-  VibeVoice-ASR/
-  Qwen3-ASR-1.7B/
-  VoxCPM2/
-  LatentSync/
-```
-
-Then reference those paths from `configs/local.yaml`.
+Do not commit model weights, private media, generated audio/video, `.env`, `configs/local.yaml`, or local diagnostics under `outputs/`.

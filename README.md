@@ -4,7 +4,7 @@ Local-first AI dubbing pipeline for translating Chinese drama / video content in
 
 This project combines audio extraction, vocal extraction, ASR, LLM-based script correction, dubbing-oriented translation, per-segment TTS adapter integration, FFmpeg audio assembly, and optional LatentSync lip-sync. The audio generation stage is implemented as a strict adapter boundary so users can connect their own local backend and comply with the licenses and permissions of their source material.
 
-> Status: research release. The pipeline has been run locally, but users must prepare model weights and local paths themselves.
+> Status: research release. Model weights are not bundled in this repository. Users must prepare local weights, external repositories, local paths, and runtime dependencies themselves.
 
 ## What it does
 
@@ -22,6 +22,21 @@ VoxCPM Translator turns a source video into an English dubbed video through a st
 
 The core design choice is **per-segment audio generation**: each dialogue segment maps to one output clip named `raw_<id>.wav`, so the assembly stage can align the generated audio to the original timestamps.
 
+## Current capability matrix
+
+| Area | Status |
+| --- | --- |
+| Video-to-WAV extraction | Implemented |
+| Vocal / instrumental separation | Implemented through `audio-separator`; requires a local separator model such as `Kim_Vocal_2.onnx` |
+| VibeVoice-ASR transcription | Implemented script; requires local VibeVoice source repo plus local ASR weights |
+| LLM script correction and translation | Implemented for OpenAI-compatible chat-completions endpoints |
+| Manual TTS chunk validation | Implemented |
+| CLI-based TTS generation | Implemented through `tts.backend: custom_command` |
+| VoxCPM / VoxCPM2 TTS | Adapter slot implemented; users must install VoxCPM and provide an importable adapter module |
+| Audio assembly and video muxing | Implemented |
+| LatentSync | Experimental optional integration |
+| Fully reproducible public demo | Not included yet, because model weights and test media are external |
+
 ## Features
 
 - Local-first pipeline; model weights are not bundled in this repository.
@@ -35,68 +50,28 @@ The core design choice is **per-segment audio generation**: each dialogue segmen
 - Optional ASS subtitle generation.
 - Optional experimental LatentSync integration.
 
-## Repository layout
+## Local model requirements
 
-```text
-.
-├── configs/
-│   └── default.yaml
-├── docs/
-│   ├── INSTALL.md
-│   ├── KNOWN_GOOD_ENV.md
-│   ├── MODEL_SETUP.md
-│   ├── TROUBLESHOOTING.md
-│   └── LIPSYNC_DESIGN.md
-├── examples/
-│   ├── sample_workflow_data.json
-│   └── voxcpm_adapter_template.py
-├── scripts/
-│   ├── 00_extract_audio.py
-│   ├── 01_process_vocals.sh
-│   ├── 02_transcribe_vibe.py
-│   ├── 03_refine_and_translate.py
-│   ├── 03_kimi_refine_and_translate.py
-│   ├── 04_verify_translation.py
-│   ├── 05_generate_audio_chunks.py
-│   ├── 06_assemble_final.py
-│   ├── 07_latentsync_lipsync.py
-│   ├── burn_subtitles.py
-│   ├── check_env.py
-│   ├── common.py
-│   └── run_pipeline.py
-├── tests/
-├── .env.example
-├── .gitignore
-└── requirements.txt
-```
+The common local components are:
 
-## Requirements
+| Component | Required for | Config key |
+| --- | --- | --- |
+| Vocal separation model, for example `Kim_Vocal_2.onnx` | Stage 01 | `models.audio_separator_model`, `models.audio_separator_model_dir` |
+| VibeVoice source repository | Stage 02 | `models.vibevoice_repo` |
+| VibeVoice-ASR weights | Stage 02 | `models.vibevoice_asr_path` |
+| Qwen3-ASR weights | Stage 02 | `models.qwen_asr_path` |
+| VoxCPM2 weights or another local audio-generation backend | Stage 05 | `models.voxcpm_model_path`, `tts.*` |
+| LatentSync repo / weights | Optional stage 07 | `models.latentsync_dir` |
 
-Recommended environment:
-
-- Linux
-- Python 3.10+
-- CUDA-capable GPU for local ASR / generation backends
-- FFmpeg / FFprobe
-- Conda or Mamba
-- Local model weights
-- NVIDIA API key or another OpenAI-compatible chat-completions endpoint
-
-The pipeline expects you to prepare models yourself. Common local components include:
-
-- `Kim_Vocal_2.onnx` or another audio-separator-compatible vocal model
-- `VibeVoice-ASR`
-- `Qwen3-ASR-1.7B` or compatible tokenizer/model path required by your VibeVoice setup
-- Your preferred local audio-generation backend or VoxCPM adapter
-- Optional: `LatentSync`
+Read [docs/QUICKSTART_LOCAL.md](docs/QUICKSTART_LOCAL.md) first for the concrete local directory layout and setup order. More details are in [docs/INSTALL.md](docs/INSTALL.md), [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md), and [docs/KNOWN_GOOD_ENV.md](docs/KNOWN_GOOD_ENV.md).
 
 This repository does **not** redistribute any model weights.
 
 ## Installation
 
 ```bash
-git clone https://github.com/bzcsk2/VoxCPM-translater.git
-cd VoxCPM-translater
+git clone https://github.com/bzcsk2/VoxCPM-translator.git
+cd VoxCPM-translator
 
 conda create -n voxcpm-translator python=3.10 -y
 conda activate voxcpm-translator
@@ -110,8 +85,6 @@ Then edit `configs/local.yaml` and set your local model paths and input files.
 
 The scripts automatically load simple `KEY=VALUE` pairs from `.env` without overriding already exported environment variables.
 
-See [docs/INSTALL.md](docs/INSTALL.md), [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md), and [docs/KNOWN_GOOD_ENV.md](docs/KNOWN_GOOD_ENV.md) for details.
-
 Project maturity and planned improvements are tracked in [ROADMAP.md](ROADMAP.md).
 
 ## Configuration
@@ -120,9 +93,12 @@ All local paths should live in `configs/local.yaml`. The default template intent
 
 ```yaml
 models:
+  audio_separator_model: "Kim_Vocal_2.onnx"
   audio_separator_model_dir: "/path/to/audio-separator-models"
+  vibevoice_repo: "/path/to/VibeVoice"
   vibevoice_asr_path: "/path/to/VibeVoice-ASR"
   qwen_asr_path: "/path/to/Qwen3-ASR-1.7B"
+  voxcpm_model_path: "/path/to/VoxCPM2"
   latentsync_dir: "/path/to/LatentSync"
 ```
 
@@ -153,30 +129,6 @@ Or run selected stages through the lightweight orchestrator:
 ```bash
 python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6
 ```
-
-Inspect expected output status without running stages:
-
-```bash
-python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --status
-```
-
-The status view also includes the last recorded local stage run when a manifest exists, for example `last_run=failed`, `finished=...`, `duration=...`, and a non-zero `returncode`.
-
-Resume after an interrupted run by skipping completed stages:
-
-```bash
-python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --resume
-```
-
-`--resume` skips stages whose durable outputs are complete. Validation-only stages such as `verify` are not auto-skipped because they do not create durable output files.
-
-Real stage runs write local manifest files under:
-
-```text
-outputs/.pipeline_state/
-```
-
-Each manifest records only stage metadata such as stage id, stage name, success/failure status, timestamps, duration, return code, and config file name. It intentionally does not record API keys, prompts, translated text, source text, command lines, model outputs, or media metadata.
 
 Optional:
 
@@ -216,6 +168,8 @@ tts:
 ```
 
 The `custom_command` backend supports `$id`, `$speaker`, `$text`, `$output`, `$start`, and `$end`. The `voxcpm` backend imports the configured adapter module and calls `generate_audio(segment, output_path, config)`.
+
+The repository ships only an adapter template at `examples/voxcpm_adapter_template.py`. To use VoxCPM2 directly, install the upstream runtime and provide an adapter module that loads your local `models.voxcpm_model_path` and writes one WAV file per segment.
 
 ## Main outputs
 

@@ -2,11 +2,13 @@
 
 This project is a research workflow rather than a packaged CLI. Install the runtime first, then point the config file to your local model directories.
 
+For the shortest first-run path, start with [QUICKSTART_LOCAL.md](QUICKSTART_LOCAL.md). Model weight details are in [MODEL_SETUP.md](MODEL_SETUP.md).
+
 ## 1. Clone
 
 ```bash
-git clone https://github.com/bzcsk2/VoxCPM-translater.git
-cd VoxCPM-translater
+git clone https://github.com/bzcsk2/VoxCPM-translator.git
+cd VoxCPM-translator
 ```
 
 ## 2. Create environment
@@ -17,18 +19,46 @@ conda activate voxcpm-translator
 pip install -r requirements.txt
 ```
 
-PyTorch should be installed according to your CUDA version.
-
-## 3. Install system dependencies
-
-You need FFmpeg and FFprobe:
+Install PyTorch according to your CUDA version. FFmpeg and FFprobe are required:
 
 ```bash
 ffmpeg -version
 ffprobe -version
 ```
 
-You also need `audio-separator` if you use `scripts/01_process_vocals.sh`.
+Install `audio-separator` if you use `scripts/01_process_vocals.sh`:
+
+```bash
+pip install audio-separator
+```
+
+## 3. Prepare external models
+
+Keep external repositories and model weights outside this repository. A recommended layout is:
+
+```text
+~/repos/
+  VibeVoice/
+  LatentSync/              # optional
+
+~/models/
+  audio-separator/
+    Kim_Vocal_2.onnx
+  VibeVoice-ASR/
+  Qwen3-ASR-1.7B/
+  VoxCPM2/
+```
+
+The full pipeline needs these local components:
+
+| Component | Config key |
+| --- | --- |
+| Vocal separation ONNX model | `models.audio_separator_model`, `models.audio_separator_model_dir` |
+| VibeVoice source checkout | `models.vibevoice_repo` |
+| VibeVoice-ASR weights | `models.vibevoice_asr_path` |
+| Qwen3-ASR weights | `models.qwen_asr_path` |
+| VoxCPM2 weights or another local TTS backend | `models.voxcpm_model_path`, `tts.*` |
+| LatentSync repo / weights, optional | `models.latentsync_dir` |
 
 ## 4. Configure
 
@@ -45,32 +75,57 @@ paths:
   input_wav: "outputs/input.wav"
 
 models:
-  audio_separator_model_dir: "/path/to/audio-separator-models"
-  vibevoice_repo: "/path/to/VibeVoice"
-  vibevoice_asr_path: "/path/to/VibeVoice-ASR"
-  qwen_asr_path: "/path/to/Qwen3-ASR-1.7B"
-  voxcpm_model_path: "/path/to/VoxCPM2"
+  audio_separator_model: "Kim_Vocal_2.onnx"
+  audio_separator_model_dir: "/home/you/models/audio-separator"
+  vibevoice_repo: "/home/you/repos/VibeVoice"
+  vibevoice_asr_path: "/home/you/models/VibeVoice-ASR"
+  qwen_asr_path: "/home/you/models/Qwen3-ASR-1.7B"
+  voxcpm_model_path: "/home/you/models/VoxCPM2"
 ```
 
-Set your API key in `.env` or export it in your shell:
+Set the environment variable named by `llm.api_key_env` before running the translation stage. The default variable name is `NVIDIA_API_KEY`. Simple `KEY=VALUE` pairs in `.env` are loaded automatically by the Python scripts.
+
+## 5. Choose a TTS backend
+
+For an initial check, keep the manual backend and place pre-generated WAV chunks under `paths.dub_chunk_dir`:
+
+```yaml
+tts:
+  backend: "manual"
+```
+
+For a local CLI-based TTS engine:
+
+```yaml
+tts:
+  backend: "custom_command"
+  custom_command: "python my_tts.py --text '$text' --speaker '$speaker' --output '$output'"
+```
+
+For VoxCPM2, install the upstream runtime and provide an adapter module:
 
 ```bash
-NVIDIA_API_KEY="your_key_here"
+pip install voxcpm
 ```
 
-Simple `KEY=VALUE` pairs in `.env` are loaded automatically by the Python scripts. Already-exported environment variables take precedence over `.env` values.
+```yaml
+tts:
+  backend: "voxcpm"
+  voxcpm_adapter: "my_voxcpm_adapter"
+  voxcpm_adapter_function: "generate_audio"
+```
 
-## 5. Check environment
+The repository includes only a starting template at `examples/voxcpm_adapter_template.py`; copy it and replace the loader / inference call with the VoxCPM API that works in your local environment.
 
-Run the preflight check before the full pipeline:
+## 6. Check environment
 
 ```bash
 python scripts/check_env.py --config configs/local.yaml
 ```
 
-This checks FFmpeg, FFprobe, optional `audio-separator`, API-key presence, input paths, model directories, output directory creation, and TTS backend configuration.
+This checks FFmpeg, FFprobe, optional `audio-separator`, input paths, model directories, the configured audio-separator model file, output directory creation, API-key presence, and TTS backend configuration. For `tts.backend: voxcpm`, it also checks `models.voxcpm_model_path` and whether `tts.voxcpm_adapter` is importable.
 
-## 6. Run pipeline
+## 7. Run pipeline
 
 ```bash
 python scripts/00_extract_audio.py --config configs/local.yaml
