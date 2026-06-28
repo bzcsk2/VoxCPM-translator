@@ -181,8 +181,24 @@ def test_tts_stage_status_checks_required_chunks(tmp_path: Path) -> None:
     refined_json.write_text(
         json.dumps(
             [
-                {"id": 0, "en": "Hello."},
-                {"id": 1, "en": "[Music]"},
+                {
+                    "id": 0,
+                    "start": "00:00:00.000",
+                    "end": "00:00:01.000",
+                    "speaker": "spk1",
+                    "text_zh": "你好",
+                    "zh_fixed": "你好。",
+                    "en": "Hello.",
+                },
+                {
+                    "id": 1,
+                    "start": "00:00:01.000",
+                    "end": "00:00:02.000",
+                    "speaker": "spk1",
+                    "text_zh": "[Music]",
+                    "zh_fixed": "[Music]",
+                    "en": "[Music]",
+                },
             ]
         ),
         encoding="utf-8",

@@ -21,7 +21,7 @@ pip install pytest
 Create local configuration from the template only when you need to run real pipeline stages:
 
 ```bash
-cp configs/default.yaml configs/local.yaml
+cp configs/local.example.yaml configs/local.yaml
 ```
 
 Do not commit `configs/local.yaml`, `.env`, model files, input videos, generated audio, or generated videos.
@@ -44,9 +44,10 @@ Run these only when a change affects real media processing, ASR, translation, TT
 ```bash
 python scripts/check_env.py --config configs/local.yaml
 python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --preflight
+python scripts/validate_artifacts.py --config configs/local.yaml
 ```
 
-For status inspection, resume behavior, stage manifests, and safe rerun patterns, see [docs/PIPELINE_OPERATIONS.md](docs/PIPELINE_OPERATIONS.md).
+For data contracts, status inspection, resume behavior, stage manifests, and safe rerun patterns, see [docs/DATA_CONTRACTS.md](docs/DATA_CONTRACTS.md) and [docs/PIPELINE_OPERATIONS.md](docs/PIPELINE_OPERATIONS.md).
 
 Optional stages:
 

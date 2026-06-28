@@ -11,6 +11,8 @@ from typing import Any
 
 from common import get_nested, load_config
 from config_checks import has_failures, render_results, run_environment_checks
+from data_contracts import has_errors as has_contract_errors
+from data_contracts import load_json_array, missing_tts_chunk_ids, validate_segment_list
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -37,8 +39,6 @@ STAGE_OUTPUT_KEYS = {
     7: ["paths.lipsync_video"],
     8: ["paths.subtitled_video"],
 }
-
-NOISE_MARKERS = {"[Music]", "[Human Sounds]", "[Human sounds]", "[Silence]"}
 
 
 def parse_args() -> argparse.Namespace:
@@ -79,11 +79,6 @@ def _has_material_output(path: Path) -> bool:
     return path.is_file() and path.stat().st_size >= 0
 
 
-def _is_noise_row(segment: dict[str, Any]) -> bool:
-    text = str(segment.get("en") or segment.get("zh_fixed") or segment.get("text_zh") or "").strip()
-    return text in NOISE_MARKERS or (text.startswith("[") and text.endswith("]"))
-
-
 def _tts_chunks_complete(cfg: dict[str, Any]) -> tuple[str, str]:
     refined_json = Path(str(get_nested(cfg, "paths.refined_json", "")))
     chunk_dir = Path(str(get_nested(cfg, "paths.dub_chunk_dir", "")))
@@ -93,21 +88,20 @@ def _tts_chunks_complete(cfg: dict[str, Any]) -> tuple[str, str]:
         return "missing", f"missing chunk directory: {chunk_dir}"
 
     try:
-        segments = json.loads(refined_json.read_text(encoding="utf-8"))
+        segments = load_json_array(refined_json)
     except Exception as exc:
         return "partial", f"cannot inspect refined JSON: {exc}"
 
-    required_ids = [segment.get("id") for segment in segments if isinstance(segment, dict) and not _is_noise_row(segment)]
-    missing = [
-        seg_id
-        for seg_id in required_ids
-        if not (chunk_dir / f"raw_{seg_id}.wav").exists() and not (chunk_dir / f"dub_{seg_id}.wav").exists()
-    ]
+    issues = validate_segment_list(segments, "refined", refined=True)
+    if has_contract_errors(issues):
+        return "partial", "refined JSON contract errors; run scripts/validate_artifacts.py"
+
+    missing = missing_tts_chunk_ids(segments, chunk_dir)
     if missing:
         preview = ", ".join(map(str, missing[:5]))
         suffix = "..." if len(missing) > 5 else ""
         return "partial", f"missing chunks: {preview}{suffix}"
-    return "complete", f"{len(required_ids)} required chunks present in {chunk_dir}"
+    return "complete", f"{len(segments) - len([segment for segment in segments if segment.get('en') in {'[Music]', '[Human Sounds]', '[Human sounds]', '[Silence]'}])} required chunks present in {chunk_dir}"
 
 
 def stage_status(stage_id: int, cfg: dict[str, Any]) -> tuple[str, str]:

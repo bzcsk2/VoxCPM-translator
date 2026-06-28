@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import importlib
-import json
 import shlex
 import subprocess
 import sys
@@ -10,20 +9,30 @@ from string import Template
 from typing import Any, Callable
 
 from common import ensure_dir, get_nested, load_config, parse_args, require_nested
+from data_contracts import (
+    expected_chunk_paths,
+    has_errors,
+    is_non_spoken_segment,
+    load_json_array,
+    missing_tts_chunk_ids,
+    render_issues,
+    segment_text,
+    validate_segment_list,
+)
 
 
 NOISE_MARKERS = {"[Music]", "[Human Sounds]", "[Human sounds]", "[Silence]"}
 
 
 def expected_chunk_path(chunk_dir: Path, seg_id: Any) -> Path:
-    raw_path = chunk_dir / f"raw_{seg_id}.wav"
+    raw_path, dub_path = expected_chunk_paths(chunk_dir, seg_id)
     if raw_path.exists():
         return raw_path
-    return chunk_dir / f"dub_{seg_id}.wav"
+    return dub_path
 
 
 def _segment_text(segment: dict[str, Any]) -> str:
-    return str(segment.get("en") or segment.get("zh_fixed") or segment.get("text_zh") or "").strip()
+    return segment_text(segment)
 
 
 def _render_command(template: str, segment: dict[str, Any], output_path: Path) -> list[str]:
@@ -40,21 +49,13 @@ def _render_command(template: str, segment: dict[str, Any], output_path: Path) -
 
 
 def validate_manual_chunks(segments: list[dict[str, Any]], chunk_dir: Path) -> list[Any]:
-    missing: list[Any] = []
-    for segment in segments:
-        text = _segment_text(segment)
-        if text in NOISE_MARKERS:
-            continue
-        seg_id = segment.get("id")
-        if not expected_chunk_path(chunk_dir, seg_id).exists():
-            missing.append(seg_id)
-    return missing
+    return missing_tts_chunk_ids(segments, chunk_dir)
 
 
 def run_custom_command(segments: list[dict[str, Any]], chunk_dir: Path, command_template: str, overwrite: bool) -> None:
     for segment in segments:
         text = _segment_text(segment)
-        if not text or text in NOISE_MARKERS:
+        if not text or is_non_spoken_segment(segment):
             continue
         seg_id = segment.get("id")
         output_path = chunk_dir / f"raw_{seg_id}.wav"
@@ -94,7 +95,7 @@ def run_python_adapter(
     generate_audio = _load_adapter(adapter_module, function_name)
     for segment in segments:
         text = _segment_text(segment)
-        if not text or text in NOISE_MARKERS:
+        if not text or is_non_spoken_segment(segment):
             continue
         seg_id = segment.get("id")
         output_path = chunk_dir / f"raw_{seg_id}.wav"
@@ -128,8 +129,12 @@ def main() -> int:
     backend = get_nested(cfg, "tts.backend", "manual")
     overwrite = bool(get_nested(cfg, "tts.overwrite", False))
 
-    with refined_json.open("r", encoding="utf-8") as f:
-        segments = json.load(f)
+    segments = load_json_array(refined_json)
+    segment_issues = validate_segment_list(segments, "refined", refined=True)
+    if segment_issues:
+        print(render_issues(segment_issues))
+    if has_errors(segment_issues):
+        return 1
 
     if backend == "manual":
         missing = validate_manual_chunks(segments, chunk_dir)

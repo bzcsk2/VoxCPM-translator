@@ -1,29 +1,18 @@
 from __future__ import annotations
 
-import json
 import sys
 from typing import Any
 
 from common import get_nested, load_config, parse_args
+from data_contracts import has_errors, load_json_array, render_issues, validate_alignment
 
 
 IMMUTABLE_KEYS = ["id", "start", "end", "speaker", "text_zh"]
 
 
 def verify_alignment(asr_data: list[dict[str, Any]], refined_data: list[dict[str, Any]]) -> list[str]:
-    errors: list[str] = []
-    if len(asr_data) != len(refined_data):
-        errors.append(f"ASR has {len(asr_data)} rows, refined data has {len(refined_data)} rows.")
-        return errors
-
-    for idx, (src, out) in enumerate(zip(asr_data, refined_data)):
-        for key in IMMUTABLE_KEYS:
-            if src.get(key) != out.get(key):
-                errors.append(f"row {idx} key {key!r} mismatch: {src.get(key)!r} != {out.get(key)!r}")
-        en = out.get("en", "")
-        if not en or en in {"[Error]", "[Translation Failed]"}:
-            errors.append(f"row {idx} ID {out.get('id')} has empty/error translation.")
-    return errors
+    """Backward-compatible string API used by older tests and scripts."""
+    return [f"{issue.path}: {issue.message}" for issue in validate_alignment(asr_data, refined_data) if issue.level == "ERROR"]
 
 
 def main() -> int:
@@ -32,15 +21,13 @@ def main() -> int:
     asr_file = get_nested(cfg, "paths.asr_json")
     refined_file = get_nested(cfg, "paths.refined_json")
 
-    with open(asr_file, "r", encoding="utf-8") as f:
-        asr_data = json.load(f)
-    with open(refined_file, "r", encoding="utf-8") as f:
-        refined_data = json.load(f)
+    asr_data = load_json_array(asr_file)
+    refined_data = load_json_array(refined_file)
 
-    errors = verify_alignment(asr_data, refined_data)
-    if errors:
-        for error in errors:
-            print(f"FAILED: {error}")
+    issues = validate_alignment(asr_data, refined_data)
+    if issues:
+        print(render_issues(issues))
+    if has_errors(issues):
         return 1
 
     print(f"SUCCESS: {len(refined_data)} rows verified.")
