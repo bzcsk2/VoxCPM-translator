@@ -6,6 +6,8 @@ Use this document when you want to answer these questions before a long run:
 
 - Is my config complete enough to start?
 - Which stages are already complete?
+- Are my ASR / refined JSON artifacts structurally valid?
+- Do my TTS chunks cover all spoken segments?
 - Can I resume without redoing earlier work?
 - Where can I see the last run status for each stage?
 
@@ -55,7 +57,26 @@ You can combine it with `--dry-run` to test the gate and command plan without ex
 python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --preflight --dry-run
 ```
 
-## 4. Inspect stage status
+## 4. Validate intermediate artifacts
+
+After ASR, translation, or manual TTS preparation, validate the data contracts before moving downstream:
+
+```bash
+python scripts/validate_artifacts.py --config configs/local.yaml
+```
+
+This checks:
+
+- ASR JSON structure
+- refined JSON structure
+- ASR / refined immutable-field alignment
+- timestamp format and ordering
+- failed translation markers
+- TTS chunk coverage for spoken segments
+
+See [DATA_CONTRACTS.md](DATA_CONTRACTS.md) for the detailed rules.
+
+## 5. Inspect stage status
 
 To see which selected stages appear complete, missing, partial, or check-only:
 
@@ -63,9 +84,9 @@ To see which selected stages appear complete, missing, partial, or check-only:
 python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --status
 ```
 
-The status command inspects configured output paths. For the TTS stage, it checks whether every non-noise segment in `paths.refined_json` has a corresponding `raw_<id>.wav` or `dub_<id>.wav` in `paths.dub_chunk_dir`.
+The status command inspects configured output paths. For the TTS stage, it checks whether every spoken segment in `paths.refined_json` has a corresponding `raw_<id>.wav` or `dub_<id>.wav` in `paths.dub_chunk_dir`.
 
-## 5. Resume safely
+## 6. Resume safely
 
 Use `--resume` to skip stages whose expected outputs already exist:
 
@@ -75,7 +96,7 @@ python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-s
 
 The verify stage is intentionally not auto-skipped because it has no durable output file. It should still run when selected.
 
-## 6. Skip a stage explicitly
+## 7. Skip a stage explicitly
 
 You can skip stages by stage ID or stage name:
 
@@ -85,7 +106,7 @@ python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-s
 
 Use explicit skips carefully. A downstream stage may still fail if it depends on outputs from the skipped stage.
 
-## 7. Read stage manifests
+## 8. Read stage manifests
 
 After each executed stage, the orchestrator writes a small manifest under:
 
@@ -104,7 +125,7 @@ The manifest records:
 
 It intentionally does not store the full command, private absolute config path, model paths, source media paths, or secrets.
 
-## 8. Recommended run patterns
+## 9. Recommended run patterns
 
 ### First full local run
 
@@ -117,6 +138,7 @@ python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-s
 
 ```bash
 python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --status
+python scripts/validate_artifacts.py --config configs/local.yaml
 python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --resume --preflight
 ```
 
@@ -124,6 +146,7 @@ python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-s
 
 ```bash
 python scripts/run_pipeline.py --config configs/local.yaml --from-stage 3 --to-stage 6 --preflight
+python scripts/validate_artifacts.py --config configs/local.yaml
 ```
 
 ### Only inspect subtitles or lip-sync outputs
@@ -132,12 +155,14 @@ python scripts/run_pipeline.py --config configs/local.yaml --from-stage 3 --to-s
 python scripts/run_pipeline.py --config configs/local.yaml --from-stage 7 --to-stage 8 --status
 ```
 
-## 9. Troubleshooting
+## 10. Troubleshooting
 
 | Symptom | What to check |
 | --- | --- |
 | `check_env.py` returns `FAIL` for placeholder paths | Replace `/path/to/...` values in `configs/local.yaml` with real local paths. |
 | `--preflight` stops before stages run | Fix all `FAIL` rows first, then rerun. |
-| `--status` reports TTS as partial | Add missing `raw_<id>.wav` or `dub_<id>.wav` files for non-noise segments. |
+| `validate_artifacts.py` reports timestamp errors | Check `start` / `end` format and ensure each `end` is after `start`. |
+| `validate_artifacts.py` reports alignment errors | Stage 03 changed an immutable field; rerun translation or repair only `zh_fixed` / `en`. |
+| `--status` reports TTS as partial | Add missing `raw_<id>.wav` or `dub_<id>.wav` files for spoken segments. |
 | `--resume` reruns verify | This is expected because the verify stage has no durable output. |
 | A stage fails but output files exist | Read `outputs/.pipeline_state/stage_*.json` and rerun with a narrower `--from-stage` / `--to-stage` range. |
