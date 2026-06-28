@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from common import get_nested, load_config, parse_args, timestamp_to_ms
-from data_contracts import has_errors, is_non_spoken_segment, load_json_array, render_issues, segment_text, validate_segment_list
+from data_contracts import is_non_spoken_segment, load_json_array, segment_text
 from runtime_checks import ensure_parent_dir, require_file, require_positive_float
 
 
@@ -52,6 +52,30 @@ def split_into_lines(text: str, max_chars: int) -> list[str]:
         if current:
             lines.append(current)
     return [line for line in lines if line] or [text.strip()]
+
+
+def subtitle_segment_errors(segments: list[dict[str, Any]]) -> list[str]:
+    errors: list[str] = []
+    for idx, segment in enumerate(segments):
+        for key in ("start", "end", "en"):
+            if key not in segment:
+                errors.append(f"segment[{idx}].{key}: missing required subtitle field")
+        if "start" in segment and "end" in segment:
+            try:
+                start_ms = timestamp_to_ms(str(segment["start"]))
+                end_ms = timestamp_to_ms(str(segment["end"]))
+            except Exception as exc:
+                errors.append(f"segment[{idx}]: invalid timestamp: {exc}")
+            else:
+                if end_ms <= start_ms:
+                    errors.append(f"segment[{idx}]: end must be after start")
+    return errors
+
+
+def validate_subtitle_segments(segments: list[dict[str, Any]]) -> None:
+    errors = subtitle_segment_errors(segments)
+    if errors:
+        raise ValueError("Refined JSON failed subtitle validation:\n" + "\n".join(errors))
 
 
 def validate_subtitle_inputs(
@@ -116,9 +140,7 @@ def main() -> None:
     )
 
     segments = load_json_array(refined_path)
-    issues = validate_segment_list(segments, "refined", refined=True)
-    if has_errors(issues):
-        raise ValueError("Refined JSON failed contract validation:\n" + render_issues(issues))
+    validate_subtitle_segments(segments)
 
     header = f"""[Script Info]
 ScriptType: v4.00+
