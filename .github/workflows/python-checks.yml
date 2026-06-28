@@ -6,6 +6,9 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -18,21 +21,12 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.10"
+          cache: "pip"
 
-      - name: Install lightweight dependencies
+      - name: Install development dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install pytest
+          pip install -r requirements-dev.txt
 
-      - name: Compile scripts
-        run: python -m compileall scripts
-
-      - name: Check shell script syntax
-        run: bash -n scripts/01_process_vocals.sh
-
-      - name: Run tests
-        run: pytest -q
-
-      - name: Dry-run pipeline
-        run: python scripts/run_pipeline.py --config configs/default.yaml --dry-run --from-stage 0 --to-stage 6
+      - name: Run lightweight checks
+        run: python scripts/dev_check.py
