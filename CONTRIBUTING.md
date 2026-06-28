@@ -15,9 +15,10 @@ VoxCPM Translator is a research workflow for local AI dubbing. Contributions are
 conda create -n voxcpm-translator python=3.10 -y
 conda activate voxcpm-translator
 pip install -r requirements.txt
+pip install pytest
 ```
 
-Create local configuration from the template:
+Create local configuration from the template only when you need to run real pipeline stages:
 
 ```bash
 cp configs/default.yaml configs/local.yaml
@@ -25,16 +26,44 @@ cp configs/default.yaml configs/local.yaml
 
 Do not commit `configs/local.yaml`, `.env`, model files, input videos, generated audio, or generated videos.
 
-## Before opening a pull request
+## Lightweight checks
 
-Run the lightweight checks that do not require external models:
+These are the default checks for ordinary documentation, helper, and validation changes. They are the same checks run by CI:
 
 ```bash
 python -m compileall scripts
-python scripts/04_verify_translation.py --config configs/local.yaml
+pytest -q
 ```
 
-The verification command requires local ASR and refined JSON files. If your change does not touch pipeline data, explain what you could and could not run in the pull request.
+They should not require GPUs, paid APIs, local media, model downloads, VibeVoice, VoxCPM, or LatentSync.
+
+## Full local pipeline checks
+
+Run these only when a change affects real media processing, ASR, translation, TTS, assembly, subtitle generation, or lip sync:
+
+```bash
+python scripts/check_env.py --config configs/local.yaml
+python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6
+```
+
+Optional stages:
+
+```bash
+python scripts/07_latentsync_lipsync.py --config configs/local.yaml
+python scripts/burn_subtitles.py --config configs/local.yaml
+```
+
+Full local runs require external models and local media. Record what you used in the pull request: OS, Python version, CUDA / GPU, FFmpeg version, key model directories or model IDs, backend mode, and which stages were run.
+
+## Pull request checklist
+
+Before opening a pull request:
+
+- Keep the diff focused on one topic.
+- Do not include model weights, generated media, `.env`, `configs/local.yaml`, or machine-specific absolute paths.
+- Run the lightweight checks unless the change is documentation-only.
+- Run full local pipeline checks when the change touches runtime behavior that CI cannot cover.
+- In the PR body, state exactly what you ran and what you could not run.
 
 ## Legal and content policy
 
