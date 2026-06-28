@@ -1,0 +1,97 @@
+# Copy this file to configs/local.yaml and edit all paths for your machine.
+# Do not commit configs/local.yaml.
+
+paths:
+  # Source media. Keep private or copyrighted media outside the repository.
+  input_video: "/home/you/media/input.mp4"
+
+  # Stage outputs. Relative paths are resolved from the repository working directory.
+  input_wav: "outputs/input.wav"
+  output_dir: "outputs"
+  vocal_source_for_asr: "outputs/input_Vocals_Final_Gated.wav"
+  instrumental_audio: "outputs/input_(Instrumental)_Kim_Vocal_2.wav"
+  asr_json: "outputs/test_recognition_vibe.json"
+  refined_json: "outputs/workflow_data_refined_vibe.json"
+  dub_chunk_dir: "outputs/dub_chunks"
+  temp_mixed_wav: "outputs/temp_full_audio.wav"
+  final_video: "outputs/final_dubbing.mp4"
+  lipsync_video: "outputs/final_dubbing_lipsync.mp4"
+  subtitle_ass: "outputs/subtitles.ass"
+  subtitled_video: "outputs/final_dubbing_subtitled.mp4"
+
+models:
+  # The project does not ship model weights. Keep them under ~/models or another external path.
+  audio_separator_model: "Kim_Vocal_2.onnx"
+  audio_separator_model_dir: "/home/you/models/audio-separator"
+  vibevoice_repo: "/home/you/repos/VibeVoice"
+  vibevoice_asr_path: "/home/you/models/VibeVoice-ASR"
+  qwen_asr_path: "/home/you/models/Qwen3-ASR-1.7B"
+  voxcpm_model_path: "/home/you/models/VoxCPM2"
+  latentsync_dir: "/home/you/repos/LatentSync"
+
+llm:
+  # Any OpenAI-compatible chat-completions endpoint can be used here.
+  api_base: "https://integrate.api.nvidia.com/v1/chat/completions"
+  model: "openai/gpt-oss-120b"
+  api_key_env: "NVIDIA_API_KEY"
+  temperature: 0.1
+  max_tokens: 8192
+  batch_size: 20
+  split_failed_batches: true
+
+runtime:
+  asr_device: "cuda:0"
+  asr_dtype: "bfloat16"
+  tts_devices: ["cuda:0"]
+
+audio_extract:
+  sample_rate: 44100
+  channels: 2
+
+vocal_extraction:
+  output_format: "WAV"
+  mdx_overlap: 0.75
+  enable_denoise: true
+  noise_gate_threshold: 0.03
+  noise_gate_range: 0.01
+  noise_gate_attack_ms: 50
+  noise_gate_release_ms: 500
+  raw_vocal_name: "input_Vocals_HQ_Raw"
+  final_vocal_name: "input_Vocals_Final_Gated.wav"
+
+asr:
+  max_new_tokens: 8192
+  temperature: 0.5
+  top_p: 0.95
+  repetition_penalty: 1.2
+  context_hint: >-
+    This is a high-paced drama. Each sentence must be a separate JSON object.
+    DO NOT merge multiple sentences into one ID. Strictly identify every brief
+    silence and create a new segment. Identify different speakers carefully.
+
+tts:
+  # Start with manual until ASR / translation / assembly are proven.
+  backend: "manual"  # manual | custom_command | voxcpm
+  custom_command: "" # Example: python my_tts.py --text '$text' --speaker '$speaker' --output '$output'
+  voxcpm_adapter: "" # Python module exposing generate_audio(segment, output_path, config)
+  voxcpm_adapter_function: "generate_audio"
+  overwrite: false
+  cfg_value: 2.0
+  inference_timesteps: 15
+  voice_prompt_prefix: "(natural voice) [spk1]"
+
+assembly:
+  min_speed_ratio: 0.70
+  audio_bitrate: "192k"
+  missing_chunk_policy: "error"  # error | warn | skip
+
+subtitles:
+  font_name: "Arial"
+  font_size: 60
+  pos_x: 960
+  pos_y: 930
+  color_text: "&H00FFFFFF"
+  color_outline: "&H00000000"
+  outline_size: 2
+  max_chars_per_line: 42
+  min_duration_ms: 800
