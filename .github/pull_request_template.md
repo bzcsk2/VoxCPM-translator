@@ -10,6 +10,8 @@
   - [ ] `python scripts/dev_check.py --check shell`
   - [ ] `python scripts/dev_check.py --check tests`
   - [ ] `python scripts/dev_check.py --check pipeline-dry-run`
+- [ ] Diagnostic report generated, if this changes runtime troubleshooting:
+  - [ ] `python scripts/diagnose.py --config configs/local.yaml --include-artifacts`
 - [ ] Full local pipeline checks, if runtime behavior changed
 - [ ] Not run, because:
 
