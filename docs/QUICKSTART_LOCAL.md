@@ -17,6 +17,9 @@ The project does not ship model weights. Keep all models outside this repository
   VibeVoice-ASR/
   Qwen3-ASR-1.7B/
   VoxCPM2/
+
+~/media/
+  input.mp4
 ```
 
 ## 1. Clone this repository
@@ -41,7 +44,7 @@ Install PyTorch according to your CUDA version. Install FFmpeg / FFprobe through
 
 ### Required for vocal separation
 
-Place an `audio-separator` compatible vocal model in a local model directory. The default config expects:
+Place an `audio-separator` compatible vocal model in a local model directory. The default local template expects:
 
 ```text
 ~/models/audio-separator/Kim_Vocal_2.onnx
@@ -88,10 +91,14 @@ LatentSync may need a separate environment because its PyTorch / CUDA / diffuser
 
 ## 4. Create local config files
 
+Use the user-facing local template:
+
 ```bash
 cp .env.example .env
-cp configs/default.yaml configs/local.yaml
+cp configs/local.example.yaml configs/local.yaml
 ```
+
+Do not copy `configs/default.yaml` for private local work. It is the canonical schema-like default used when no `--config` is provided. See [CONFIGURATION.md](CONFIGURATION.md) for the full config policy.
 
 Edit `configs/local.yaml`:
 
@@ -167,6 +174,21 @@ Fix all `[FAIL]` entries before running the full pipeline. `[WARN]` entries may 
 
 ## 7. Run the pipeline
 
+Use the orchestrator with a preflight gate:
+
+```bash
+python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --preflight
+```
+
+If a run fails midway, inspect status and resume:
+
+```bash
+python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --status
+python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --resume --preflight
+```
+
+Manual stage execution is still useful while debugging:
+
 ```bash
 python scripts/00_extract_audio.py --config configs/local.yaml
 bash scripts/01_process_vocals.sh configs/local.yaml
@@ -177,11 +199,7 @@ python scripts/05_generate_audio_chunks.py --config configs/local.yaml
 python scripts/06_assemble_final.py --config configs/local.yaml
 ```
 
-Or run the same stages through the orchestrator:
-
-```bash
-python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6
-```
+See [PIPELINE_OPERATIONS.md](PIPELINE_OPERATIONS.md) for dry-run, status, resume, skip, and manifest workflows.
 
 ## 8. Common first-run failure points
 
