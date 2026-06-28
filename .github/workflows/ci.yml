@@ -36,13 +36,4 @@ jobs:
         run: python -m compileall scripts
 
       - name: Run unit tests
-        run: |
-          set -o pipefail
-          pytest -q --tb=short | tee pytest-ci.log
-
-      - name: Upload pytest log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-ci-log
-          path: pytest-ci.log
+        run: pytest -q
