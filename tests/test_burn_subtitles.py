@@ -56,3 +56,20 @@ def test_validate_subtitle_inputs_creates_ass_parent(tmp_path: Path) -> None:
     )
 
     assert result[2].parent.exists()
+
+
+def test_validate_subtitle_segments_accepts_minimal_subtitle_contract() -> None:
+    burn_subtitles.validate_subtitle_segments(
+        [
+            {
+                "start": "00:00:00.000",
+                "end": "00:00:01.000",
+                "en": "Hello.",
+            }
+        ]
+    )
+
+
+def test_validate_subtitle_segments_rejects_bad_timestamp() -> None:
+    with pytest.raises(ValueError):
+        burn_subtitles.validate_subtitle_segments([{"start": "bad", "end": "00:00:01.000", "en": "Hello."}])
