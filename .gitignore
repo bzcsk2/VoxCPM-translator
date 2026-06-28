@@ -2,6 +2,11 @@
 __pycache__/
 *.py[cod]
 *$py.class
+.pytest_cache/
+.coverage
+htmlcov/
+.mypy_cache/
+.ruff_cache/
 .venv/
 venv/
 env/
@@ -12,10 +17,15 @@ env/
 !.env.example
 auth.json
 credentials.json
+*.pem
+*.key
+*.token
 
 # Local configs
 configs/local.yaml
 configs/*.local.yaml
+!configs/local.example.yaml
+!configs/ci.yaml
 
 # Outputs and temporary files
 outputs/
@@ -37,6 +47,7 @@ temp_full_audio.wav
 final_dubbing*.mp4
 *_lipsync*.mp4
 *_subtitled*.mp4
+subtitles.ass
 
 # Media files
 *.wav
@@ -51,6 +62,12 @@ final_dubbing*.mp4
 *.ass
 *.srt
 
+# Allow tiny documentation / fixture placeholders when explicitly added.
+!docs/**/*.md
+!tests/fixtures/**/*.txt
+!tests/fixtures/**/*.json
+!tests/fixtures/**/*.yaml
+
 # Model weights / checkpoints
 models/
 checkpoints/
@@ -63,7 +80,12 @@ local_models/
 *.bin
 *.gguf
 
+# Downloaded upstream repos should stay outside this repository.
+VibeVoice/
+LatentSync/
+
 # OS / editor
 .DS_Store
+Thumbs.db
 .vscode/
 .idea/
