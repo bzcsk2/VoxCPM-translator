@@ -140,6 +140,12 @@ The validator accepts either prefix for compatibility. Newly generated chunks us
 
 ## Validation commands
 
+Validate ASR and refined JSON alignment only:
+
+```bash
+python scripts/validate_artifacts.py --config configs/local.yaml --skip-chunks
+```
+
 Validate ASR, refined JSON alignment, and chunks together:
 
 ```bash
