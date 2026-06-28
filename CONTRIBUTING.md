@@ -43,8 +43,10 @@ Run these only when a change affects real media processing, ASR, translation, TT
 
 ```bash
 python scripts/check_env.py --config configs/local.yaml
-python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6
+python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --preflight
 ```
+
+For status inspection, resume behavior, stage manifests, and safe rerun patterns, see [docs/PIPELINE_OPERATIONS.md](docs/PIPELINE_OPERATIONS.md).
 
 Optional stages:
 
