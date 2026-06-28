@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import shutil
 import subprocess
 from pathlib import Path
@@ -20,14 +21,27 @@ from data_contracts import (
 from runtime_checks import ensure_parent_dir, require_choice, require_dir, require_file, require_positive_float
 
 MISSING_POLICIES = {"error", "warn", "skip"}
+NOISE_MARKERS = {"[Music]", "[Human Sounds]", "[Human sounds]", "[Silence]"}
 
 
-def find_chunk(chunk_dir: str | Path, seg_id: int | str) -> Path | None:
+def is_noise_only(text: str) -> bool:
+    """Backward-compatible helper kept for older tests and direct callers."""
+    stripped = text.strip()
+    return stripped in NOISE_MARKERS or bool(re.match(r"^\[[^\]]+\]$", stripped))
+
+
+def find_chunk(chunk_dir: str | Path, seg_id: int | str) -> str | None:
+    """Return the first compatible chunk path as a string.
+
+    The public helper returned ``str | None`` before the output-stage hardening
+    refactor. Keep that behavior so older tests and direct callers continue to
+    work while the implementation still uses the shared chunk naming contract.
+    """
     raw_path, dub_path = expected_chunk_paths(chunk_dir, seg_id)
     if raw_path.exists():
-        return raw_path
+        return str(raw_path)
     if dub_path.exists():
-        return dub_path
+        return str(dub_path)
     return None
 
 
