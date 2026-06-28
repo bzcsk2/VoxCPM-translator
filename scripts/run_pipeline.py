@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from common import get_nested, load_config
+from config_checks import has_failures, render_results, run_environment_checks
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 
@@ -49,6 +50,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--status", action="store_true", help="Print expected output status for selected stages and exit")
     parser.add_argument("--resume", action="store_true", help="Skip selected stages whose expected outputs already exist")
+    parser.add_argument("--preflight", action="store_true", help="Run environment/config checks before executing stages")
     return parser.parse_args()
 
 
@@ -210,6 +212,13 @@ def write_stage_manifest(
     manifest_path(stage_id, name, cfg).write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
 
 
+def run_preflight(cfg: dict[str, Any]) -> bool:
+    results = run_environment_checks(cfg)
+    print("Preflight checks:")
+    print(render_results(results))
+    return not has_failures(results)
+
+
 def run_stage(stage_id: int, name: str, cmd: list[str], cfg: dict[str, Any], config_path: str) -> None:
     started_at = utc_now()
     started = time.monotonic()
@@ -245,11 +254,15 @@ def run_stage(stage_id: int, name: str, cmd: list[str], cfg: dict[str, Any], con
 
 def main() -> int:
     args = parse_args()
-    cfg = load_config(args.config) if args.status or args.resume or not args.dry_run else {}
+    needs_config = args.status or args.resume or args.preflight or not args.dry_run
+    cfg = load_config(args.config) if needs_config else {}
 
     if args.status:
         print_status(cfg, args.from_stage, args.to_stage)
         return 0
+
+    if args.preflight and not run_preflight(cfg):
+        return 1
 
     for stage_id, name, base_cmd in selected_stages(args.from_stage, args.to_stage):
         if str(stage_id) in args.skip or name in args.skip:
