@@ -63,7 +63,7 @@ The common local components are:
 | VoxCPM2 weights or another local audio-generation backend | Stage 05 | `models.voxcpm_model_path`, `tts.*` |
 | LatentSync repo / weights | Optional stage 07 | `models.latentsync_dir` |
 
-Read [docs/QUICKSTART_LOCAL.md](docs/QUICKSTART_LOCAL.md) first for the concrete local directory layout and setup order. Configuration details are in [docs/CONFIGURATION.md](docs/CONFIGURATION.md), data contracts are in [docs/DATA_CONTRACTS.md](docs/DATA_CONTRACTS.md), installation details are in [docs/INSTALL.md](docs/INSTALL.md), model details are in [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md), operational commands are in [docs/PIPELINE_OPERATIONS.md](docs/PIPELINE_OPERATIONS.md), and known-good environment notes are in [docs/KNOWN_GOOD_ENV.md](docs/KNOWN_GOOD_ENV.md).
+Read [docs/QUICKSTART_LOCAL.md](docs/QUICKSTART_LOCAL.md) first for the concrete local directory layout and setup order. Configuration details are in [docs/CONFIGURATION.md](docs/CONFIGURATION.md), data contracts are in [docs/DATA_CONTRACTS.md](docs/DATA_CONTRACTS.md), output stage details are in [docs/OUTPUT_STAGES.md](docs/OUTPUT_STAGES.md), installation details are in [docs/INSTALL.md](docs/INSTALL.md), model details are in [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md), operational commands are in [docs/PIPELINE_OPERATIONS.md](docs/PIPELINE_OPERATIONS.md), and known-good environment notes are in [docs/KNOWN_GOOD_ENV.md](docs/KNOWN_GOOD_ENV.md).
 
 This repository does **not** redistribute any model weights.
 
@@ -159,6 +159,8 @@ Optional:
 python scripts/07_latentsync_lipsync.py --config configs/local.yaml
 python scripts/burn_subtitles.py --config configs/local.yaml
 ```
+
+See [docs/OUTPUT_STAGES.md](docs/OUTPUT_STAGES.md) for final assembly, LatentSync, and subtitle burn-in details.
 
 ## TTS backend contract
 
