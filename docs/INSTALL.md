@@ -2,7 +2,7 @@
 
 This project is a research workflow rather than a packaged CLI. Install the runtime first, then point the config file to your local model directories.
 
-For the shortest first-run path, start with [QUICKSTART_LOCAL.md](QUICKSTART_LOCAL.md). Model weight details are in [MODEL_SETUP.md](MODEL_SETUP.md).
+For the shortest first-run path, start with [QUICKSTART_LOCAL.md](QUICKSTART_LOCAL.md). Configuration policy is in [CONFIGURATION.md](CONFIGURATION.md), and model weight details are in [MODEL_SETUP.md](MODEL_SETUP.md).
 
 ## 1. Clone
 
@@ -62,16 +62,18 @@ The full pipeline needs these local components:
 
 ## 4. Configure
 
+Copy the local template, not the canonical default file:
+
 ```bash
 cp .env.example .env
-cp configs/default.yaml configs/local.yaml
+cp configs/local.example.yaml configs/local.yaml
 ```
 
 Edit `configs/local.yaml`:
 
 ```yaml
 paths:
-  input_video: "/path/to/input.mp4"
+  input_video: "/home/you/media/input.mp4"
   input_wav: "outputs/input.wav"
 
 models:
@@ -82,6 +84,8 @@ models:
   qwen_asr_path: "/home/you/models/Qwen3-ASR-1.7B"
   voxcpm_model_path: "/home/you/models/VoxCPM2"
 ```
+
+`configs/default.yaml` is the schema-like default used when no `--config` is provided. Keep private machine paths in `configs/local.yaml`, which is ignored by Git. See [CONFIGURATION.md](CONFIGURATION.md) for the full config-file policy.
 
 Set the environment variable named by `llm.api_key_env` before running the translation stage. The default variable name is `NVIDIA_API_KEY`. Simple `KEY=VALUE` pairs in `.env` are loaded automatically by the Python scripts.
 
@@ -123,9 +127,24 @@ The repository includes only a starting template at `examples/voxcpm_adapter_tem
 python scripts/check_env.py --config configs/local.yaml
 ```
 
-This checks FFmpeg, FFprobe, optional `audio-separator`, input paths, model directories, the configured audio-separator model file, output directory creation, API-key presence, and TTS backend configuration. For `tts.backend: voxcpm`, it also checks `models.voxcpm_model_path` and whether `tts.voxcpm_adapter` is importable.
+This checks FFmpeg, FFprobe, optional `audio-separator`, required config values, input paths, model directories, the configured audio-separator model file, output directory creation, API-key presence, and TTS backend configuration. For `tts.backend: voxcpm`, it also checks `models.voxcpm_model_path` and whether `tts.voxcpm_adapter` is importable.
 
 ## 7. Run pipeline
+
+Prefer the orchestrator with a preflight gate:
+
+```bash
+python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --preflight
+```
+
+Inspect status and resume after a partial run:
+
+```bash
+python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --status
+python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6 --resume --preflight
+```
+
+Manual stage execution is still available for debugging:
 
 ```bash
 python scripts/00_extract_audio.py --config configs/local.yaml
@@ -137,15 +156,11 @@ python scripts/05_generate_audio_chunks.py --config configs/local.yaml
 python scripts/06_assemble_final.py --config configs/local.yaml
 ```
 
-Or use the lightweight orchestrator:
-
-```bash
-python scripts/run_pipeline.py --config configs/local.yaml --from-stage 0 --to-stage 6
-```
-
 Optional:
 
 ```bash
 python scripts/07_latentsync_lipsync.py --config configs/local.yaml
 python scripts/burn_subtitles.py --config configs/local.yaml
 ```
+
+See [PIPELINE_OPERATIONS.md](PIPELINE_OPERATIONS.md) for dry-run, status, resume, skip, and stage manifest workflows.
