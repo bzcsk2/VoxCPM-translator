@@ -32,16 +32,7 @@ jobs:
         run: bash -n scripts/01_process_vocals.sh
 
       - name: Run tests
-        run: |
-          set -o pipefail
-          pytest -q --tb=short | tee pytest-python-checks.log
-
-      - name: Upload pytest log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pytest-python-checks-log
-          path: pytest-python-checks.log
+        run: pytest -q
 
       - name: Dry-run pipeline
         run: python scripts/run_pipeline.py --config configs/default.yaml --dry-run --from-stage 0 --to-stage 6
