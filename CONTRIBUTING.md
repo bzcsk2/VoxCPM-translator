@@ -14,8 +14,7 @@ VoxCPM Translator is a research workflow for local AI dubbing. Contributions are
 ```bash
 conda create -n voxcpm-translator python=3.10 -y
 conda activate voxcpm-translator
-pip install -r requirements.txt
-pip install pytest
+pip install -r requirements-dev.txt
 ```
 
 Create local configuration from the template only when you need to run real pipeline stages:
@@ -31,11 +30,22 @@ Do not commit `configs/local.yaml`, `.env`, model files, input videos, generated
 These are the default checks for ordinary documentation, helper, and validation changes. They are the same checks run by CI:
 
 ```bash
-python -m compileall scripts
-pytest -q
+python scripts/dev_check.py
+```
+
+The development check runner includes Python compilation, shell syntax validation when `bash` is available, unit tests, and a pipeline dry-run against `configs/default.yaml`.
+
+Run a subset when iterating on a focused change:
+
+```bash
+python scripts/dev_check.py --check tests
+python scripts/dev_check.py --check compile --check shell
+python scripts/dev_check.py --check pipeline-dry-run
 ```
 
 They should not require GPUs, paid APIs, local media, model downloads, VibeVoice, VoxCPM, or LatentSync.
+
+See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for the local check workflow and CI policy.
 
 ## Full local pipeline checks
 
@@ -64,7 +74,7 @@ Before opening a pull request:
 
 - Keep the diff focused on one topic.
 - Do not include model weights, generated media, `.env`, `configs/local.yaml`, or machine-specific absolute paths.
-- Run the lightweight checks unless the change is documentation-only.
+- Run `python scripts/dev_check.py` unless the change is documentation-only.
 - Run full local pipeline checks when the change touches runtime behavior that CI cannot cover.
 - In the PR body, state exactly what you ran and what you could not run.
 
