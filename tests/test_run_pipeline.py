@@ -241,3 +241,54 @@ def test_run_stage_writes_failed_manifest(tmp_path: Path, monkeypatch) -> None:
     data = json.loads(manifest.read_text(encoding="utf-8"))
     assert data["status"] == "failed"
     assert data["returncode"] == 2
+
+
+def test_preflight_failure_stops_before_running_stages(monkeypatch, tmp_path: Path, capsys) -> None:
+    calls = []
+    config_path = write_config(
+        tmp_path / "config.yaml",
+        f"""
+paths:
+  output_dir: "{tmp_path / 'outputs'}"
+models:
+  audio_separator_model: "Kim_Vocal_2.onnx"
+tts:
+  backend: "manual"
+""",
+    )
+
+    def fake_run(cmd, check):
+        calls.append(cmd)
+
+    monkeypatch.setattr(run_pipeline.subprocess, "run", fake_run)
+    monkeypatch.setattr(
+        run_pipeline,
+        "run_environment_checks",
+        lambda cfg: [__import__("config_checks").CheckResult("FAIL", "x", "broken")],
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_pipeline.py", "--config", str(config_path), "--from-stage", "0", "--to-stage", "0", "--preflight"],
+    )
+
+    assert run_pipeline.main() == 1
+    output = capsys.readouterr().out
+    assert "Preflight checks:" in output
+    assert "[FAIL] x: broken" in output
+    assert calls == []
+
+
+def test_preflight_success_allows_dry_run(monkeypatch, tmp_path: Path, capsys) -> None:
+    config_path = write_config(tmp_path / "config.yaml", "paths:\n  output_dir: outputs\n")
+    monkeypatch.setattr(run_pipeline, "run_environment_checks", lambda cfg: [])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["run_pipeline.py", "--config", str(config_path), "--from-stage", "0", "--to-stage", "0", "--preflight", "--dry-run"],
+    )
+
+    assert run_pipeline.main() == 0
+    output = capsys.readouterr().out
+    assert "Preflight checks:" in output
+    assert "[0] extract-audio:" in output
