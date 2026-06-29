@@ -3,7 +3,6 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-
 _INITIALIZED_MODEL: Any | None = None
 
 
@@ -12,6 +11,7 @@ def _load_model(config: dict[str, Any]) -> Any:
 
     This file is a template. Keep model weights outside this repository and adapt
     the import/call code to the VoxCPM version installed in your local environment.
+    See docs/TTS_ADAPTERS.md for the formal adapter contract.
     """
     global _INITIALIZED_MODEL
     if _INITIALIZED_MODEL is not None:
@@ -31,7 +31,7 @@ def _load_model(config: dict[str, Any]) -> Any:
 
 
 def generate_audio(segment: dict[str, Any], output_path: Path, config: dict[str, Any]) -> None:
-    """Generate one WAV file for a single segment.
+    """Generate one WAV file for a single spoken segment.
 
     `scripts/05_generate_audio_chunks.py` calls this function when:
 
@@ -42,7 +42,13 @@ def generate_audio(segment: dict[str, Any], output_path: Path, config: dict[str,
       voxcpm_adapter_function: "generate_audio"
     ```
 
-    The function must write a WAV file to `output_path`.
+    Formal contract:
+
+    - input `segment` is one row from `paths.refined_json`
+    - `output_path` is the required `raw_<id>.wav` path
+    - `config` is the loaded YAML config
+    - this function must write exactly one WAV file to `output_path`
+    - raise a clear exception if generation fails
     """
     model = _load_model(config)
     text = str(segment.get("en") or segment.get("zh_fixed") or segment.get("text_zh") or "").strip()

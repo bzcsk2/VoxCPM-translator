@@ -63,7 +63,7 @@ The common local components are:
 | VoxCPM2 weights or another local audio-generation backend | Stage 05 | `models.voxcpm_model_path`, `tts.*` |
 | LatentSync repo / weights | Optional stage 07 | `models.latentsync_dir` |
 
-Read [docs/QUICKSTART_LOCAL.md](docs/QUICKSTART_LOCAL.md) first for the concrete local directory layout and setup order. Configuration details are in [docs/CONFIGURATION.md](docs/CONFIGURATION.md), data contracts are in [docs/DATA_CONTRACTS.md](docs/DATA_CONTRACTS.md), stage registry details are in [docs/STAGE_CONTRACTS.md](docs/STAGE_CONTRACTS.md), output stage details are in [docs/OUTPUT_STAGES.md](docs/OUTPUT_STAGES.md), development workflow is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), installation details are in [docs/INSTALL.md](docs/INSTALL.md), model details are in [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md), operational commands are in [docs/PIPELINE_OPERATIONS.md](docs/PIPELINE_OPERATIONS.md), and known-good environment notes are in [docs/KNOWN_GOOD_ENV.md](docs/KNOWN_GOOD_ENV.md).
+Read [docs/QUICKSTART_LOCAL.md](docs/QUICKSTART_LOCAL.md) first for the concrete local directory layout and setup order. Configuration details are in [docs/CONFIGURATION.md](docs/CONFIGURATION.md), data contracts are in [docs/DATA_CONTRACTS.md](docs/DATA_CONTRACTS.md), TTS adapter details are in [docs/TTS_ADAPTERS.md](docs/TTS_ADAPTERS.md), stage registry details are in [docs/STAGE_CONTRACTS.md](docs/STAGE_CONTRACTS.md), output stage details are in [docs/OUTPUT_STAGES.md](docs/OUTPUT_STAGES.md), development workflow is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), installation details are in [docs/INSTALL.md](docs/INSTALL.md), model details are in [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md), operational commands are in [docs/PIPELINE_OPERATIONS.md](docs/PIPELINE_OPERATIONS.md), and known-good environment notes are in [docs/KNOWN_GOOD_ENV.md](docs/KNOWN_GOOD_ENV.md).
 
 This repository does **not** redistribute any model weights.
 
@@ -221,6 +221,8 @@ tts:
 ```
 
 The `custom_command` backend supports `$id`, `$speaker`, `$text`, `$output`, `$start`, and `$end`. The `voxcpm` backend imports the configured adapter module and calls `generate_audio(segment, output_path, config)`.
+
+See [docs/TTS_ADAPTERS.md](docs/TTS_ADAPTERS.md) for the formal adapter contract, custom command variables, and adapter skeleton.
 
 The repository ships only an adapter template at `examples/voxcpm_adapter_template.py`. To use VoxCPM2 directly, install the upstream runtime and provide an adapter module that loads your local `models.voxcpm_model_path` and writes one WAV file per segment.
 
