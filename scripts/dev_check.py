@@ -38,6 +38,11 @@ CHECKS = {
         description="check shell script syntax",
         requires="bash",
     ),
+    "config-schema": Check(
+        name="config-schema",
+        command=[sys.executable, "scripts/check_config_schema.py", "--config", "configs/default.yaml"],
+        description="validate the default YAML config schema",
+    ),
     "tests": Check(
         name="tests",
         command=[sys.executable, "-m", "pytest", "-q"],
@@ -65,7 +70,7 @@ CHECKS = {
     ),
 }
 
-DEFAULT_CHECKS = ["compile", "shell", "tests", "pipeline-dry-run", "demo-smoke"]
+DEFAULT_CHECKS = ["compile", "shell", "config-schema", "tests", "pipeline-dry-run", "demo-smoke"]
 
 
 def parse_args() -> argparse.Namespace:
