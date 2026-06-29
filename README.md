@@ -35,7 +35,8 @@ The core design choice is **per-segment audio generation**: each dialogue segmen
 | VoxCPM / VoxCPM2 TTS | Adapter slot implemented; users must install VoxCPM and provide an importable adapter module |
 | Audio assembly and video muxing | Implemented |
 | LatentSync | Experimental optional integration |
-| Fully reproducible public demo | Not included yet, because model weights and test media are external |
+| No-model demo smoke | Implemented through committed JSON fixtures and generated silent WAV chunks |
+| Fully reproducible public media demo | Not included yet, because model weights and test media are external |
 
 ## Features
 
@@ -129,6 +130,16 @@ python scripts/dev_check.py
 ```
 
 See [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md) for focused checks, CI policy, and full local validation.
+
+## No-model demo
+
+Run the committed demo fixtures without local models or media:
+
+```bash
+python scripts/run_demo_smoke.py
+```
+
+This prepares `outputs/demo_smoke/`, generates silent WAV chunks for spoken rows, and validates the ASR/refined/chunk/diagnostic data path. See [examples/demo/README.md](examples/demo/README.md).
 
 ## Usage
 
