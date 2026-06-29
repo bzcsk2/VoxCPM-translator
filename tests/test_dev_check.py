@@ -7,6 +7,7 @@ def test_selected_checks_defaults_to_full_suite() -> None:
     args = type("Args", (), {"check": None})()
 
     assert [check.name for check in dev_check.selected_checks(args)] == dev_check.DEFAULT_CHECKS
+    assert "config-schema" in dev_check.DEFAULT_CHECKS
     assert "demo-smoke" in dev_check.DEFAULT_CHECKS
 
 
@@ -38,6 +39,13 @@ def test_run_check_reports_failure(monkeypatch) -> None:
 
     assert result.status == "FAIL"
     assert result.returncode == 2
+
+
+def test_config_schema_check_is_available() -> None:
+    check = dev_check.CHECKS["config-schema"]
+
+    assert check.command[1] == "scripts/check_config_schema.py"
+    assert "configs/default.yaml" in check.command
 
 
 def test_demo_smoke_check_is_available() -> None:
