@@ -71,6 +71,16 @@ python scripts/check_config_schema.py --config configs/default.yaml
 
 This checks required keys, value types, enum values, numeric ranges, and cross-field rules without checking local files or executables. See [CONFIG_SCHEMA.md](CONFIG_SCHEMA.md).
 
+## Artifact inspection
+
+Use artifact inspection when changing JSON contracts, chunk coverage, diagnostics, or demo fixtures:
+
+```bash
+python scripts/inspect_artifacts.py --config outputs/demo_smoke/config.yaml
+```
+
+This reports segment counts, speakers, time spans, non-spoken markers, failed translation markers, missing chunks, extra chunks, and validation issue summaries. See [ARTIFACT_INSPECTION.md](ARTIFACT_INSPECTION.md).
+
 ## No-model demo smoke
 
 The demo smoke proves the fixture data path without real models:
@@ -79,7 +89,7 @@ The demo smoke proves the fixture data path without real models:
 python scripts/run_demo_smoke.py
 ```
 
-It creates `outputs/demo_smoke/`, generates silent WAV chunks for spoken rows, then runs translation alignment verification, artifact validation, manual TTS chunk validation, and diagnostic report generation.
+It creates `outputs/demo_smoke/`, generates silent WAV chunks for spoken rows, then runs translation alignment verification, artifact validation, manual TTS chunk validation, artifact inspection, and diagnostic report generation.
 
 The committed fixtures live in:
 

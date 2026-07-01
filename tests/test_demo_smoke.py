@@ -38,8 +38,7 @@ def test_run_demo_smoke_executes_expected_commands(monkeypatch, tmp_path: Path) 
 
     def fake_run_command(command):
         commands.append(command)
-        # Simulate diagnose output that would normally be created by the command.
-        if "scripts/diagnose.py" in command:
+        if "scripts/inspect_artifacts.py" in command or "scripts/diagnose.py" in command:
             output_index = command.index("--output") + 1
             Path(command[output_index]).write_text("demo report", encoding="utf-8")
         return 0
@@ -47,11 +46,12 @@ def test_run_demo_smoke_executes_expected_commands(monkeypatch, tmp_path: Path) 
     monkeypatch.setattr(run_demo_smoke, "run_command", fake_run_command)
 
     assert run_demo_smoke.run_demo_smoke(tmp_path) == 0
-    assert len(commands) == 4
+    assert len(commands) == 5
     assert commands[0][1] == "scripts/04_verify_translation.py"
     assert commands[1][1] == "scripts/validate_artifacts.py"
     assert commands[2][1] == "scripts/05_generate_audio_chunks.py"
-    assert commands[3][1] == "scripts/diagnose.py"
+    assert commands[3][1] == "scripts/inspect_artifacts.py"
+    assert commands[4][1] == "scripts/diagnose.py"
 
 
 def test_run_demo_smoke_stops_on_failure(monkeypatch, tmp_path: Path) -> None:

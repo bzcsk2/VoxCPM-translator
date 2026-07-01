@@ -37,6 +37,7 @@ The core design choice is **per-segment audio generation**: each dialogue segmen
 | LatentSync | Experimental optional integration |
 | No-model demo smoke | Implemented through committed JSON fixtures and generated silent WAV chunks |
 | Config schema validation | Implemented for committed YAML structure and cross-field rules |
+| Artifact inspection | Implemented for ASR/refined/chunk summary reports |
 | Fully reproducible public media demo | Not included yet, because model weights and test media are external |
 
 ## Features
@@ -65,7 +66,7 @@ The common local components are:
 | VoxCPM2 weights or another local audio-generation backend | Stage 05 | `models.voxcpm_model_path`, `tts.*` |
 | LatentSync repo / weights | Optional stage 07 | `models.latentsync_dir` |
 
-Read [docs/QUICKSTART_LOCAL.md](docs/QUICKSTART_LOCAL.md) first for the concrete local directory layout and setup order. Configuration details are in [docs/CONFIGURATION.md](docs/CONFIGURATION.md), config schema details are in [docs/CONFIG_SCHEMA.md](docs/CONFIG_SCHEMA.md), data contracts are in [docs/DATA_CONTRACTS.md](docs/DATA_CONTRACTS.md), TTS adapter details are in [docs/TTS_ADAPTERS.md](docs/TTS_ADAPTERS.md), stage registry details are in [docs/STAGE_CONTRACTS.md](docs/STAGE_CONTRACTS.md), output stage details are in [docs/OUTPUT_STAGES.md](docs/OUTPUT_STAGES.md), development workflow is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), installation details are in [docs/INSTALL.md](docs/INSTALL.md), model details are in [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md), operational commands are in [docs/PIPELINE_OPERATIONS.md](docs/PIPELINE_OPERATIONS.md), and known-good environment notes are in [docs/KNOWN_GOOD_ENV.md](docs/KNOWN_GOOD_ENV.md).
+Read [docs/QUICKSTART_LOCAL.md](docs/QUICKSTART_LOCAL.md) first for the concrete local directory layout and setup order. Configuration details are in [docs/CONFIGURATION.md](docs/CONFIGURATION.md), config schema details are in [docs/CONFIG_SCHEMA.md](docs/CONFIG_SCHEMA.md), artifact inspection is in [docs/ARTIFACT_INSPECTION.md](docs/ARTIFACT_INSPECTION.md), data contracts are in [docs/DATA_CONTRACTS.md](docs/DATA_CONTRACTS.md), TTS adapter details are in [docs/TTS_ADAPTERS.md](docs/TTS_ADAPTERS.md), stage registry details are in [docs/STAGE_CONTRACTS.md](docs/STAGE_CONTRACTS.md), output stage details are in [docs/OUTPUT_STAGES.md](docs/OUTPUT_STAGES.md), development workflow is in [docs/DEVELOPMENT.md](docs/DEVELOPMENT.md), installation details are in [docs/INSTALL.md](docs/INSTALL.md), model details are in [docs/MODEL_SETUP.md](docs/MODEL_SETUP.md), operational commands are in [docs/PIPELINE_OPERATIONS.md](docs/PIPELINE_OPERATIONS.md), and known-good environment notes are in [docs/KNOWN_GOOD_ENV.md](docs/KNOWN_GOOD_ENV.md).
 
 This repository does **not** redistribute any model weights.
 
@@ -146,7 +147,7 @@ Run the committed demo fixtures without local models or media:
 python scripts/run_demo_smoke.py
 ```
 
-This prepares `outputs/demo_smoke/`, generates silent WAV chunks for spoken rows, and validates the ASR/refined/chunk/diagnostic data path. See [examples/demo/README.md](examples/demo/README.md).
+This prepares `outputs/demo_smoke/`, generates silent WAV chunks for spoken rows, and validates the ASR/refined/chunk/diagnostic data path. It also writes `outputs/demo_smoke/artifact_report.md`. See [examples/demo/README.md](examples/demo/README.md).
 
 ## Usage
 
@@ -154,6 +155,12 @@ Generate a diagnostic report when a run is failing or unclear:
 
 ```bash
 python scripts/diagnose.py --config configs/local.yaml --include-artifacts
+```
+
+Inspect the current ASR/refined/chunk artifacts:
+
+```bash
+python scripts/inspect_artifacts.py --config configs/local.yaml
 ```
 
 Inspect the registered stages:
