@@ -111,6 +111,7 @@ def run_demo_smoke(work_dir: Path, keep_going: bool = False) -> int:
         [sys.executable, "scripts/04_verify_translation.py", "--config", str(config_path)],
         [sys.executable, "scripts/validate_artifacts.py", "--config", str(config_path)],
         [sys.executable, "scripts/05_generate_audio_chunks.py", "--config", str(config_path)],
+        [sys.executable, "scripts/inspect_artifacts.py", "--config", str(config_path), "--output", str(work_dir / "artifact_report.md")],
         [sys.executable, "scripts/diagnose.py", "--config", str(config_path), "--include-artifacts", "--output", str(work_dir / "diagnostic_report.md")],
     ]
 
@@ -128,6 +129,7 @@ def run_demo_smoke(work_dir: Path, keep_going: bool = False) -> int:
 
     print(f"Demo smoke passed. Work dir: {work_dir}")
     print(f"Generated config: {config_path}")
+    print(f"Artifact report: {work_dir / 'artifact_report.md'}")
     print(f"Diagnostic report: {work_dir / 'diagnostic_report.md'}")
     return 0
 
